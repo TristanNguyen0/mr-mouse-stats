@@ -65,6 +65,63 @@ def test_no_settings_content_returns_none():
     assert parse_settings("!dpi") is None
 
 
+# Bare formats below are verbatim from real captures (twitch_messages).
+
+
+def test_bare_decimal_then_bare_dpi():
+    parsed = parse_settings("0.85 1600")  # sparkchieff
+    assert parsed.dpi == 1600
+    assert parsed.sensitivity == 0.85
+
+
+def test_bare_dpi_then_bare_decimal():
+    parsed = parse_settings("1600 0.52")  # pkymr
+    assert parsed.dpi == 1600
+    assert parsed.sensitivity == 0.52
+
+
+def test_dpi_keyword_with_bare_decimal():
+    parsed = parse_settings("800 dpi 1.9 raw input on")  # sparkr_
+    assert parsed.dpi == 800
+    assert parsed.sensitivity == 1.9
+
+
+def test_decimal_before_dpi_keyword():
+    parsed = parse_settings("1.50 , 1600 dpi")  # kqzfps
+    assert parsed.dpi == 1600
+    assert parsed.sensitivity == 1.5
+
+
+def test_ingame_suffix_without_sens_keyword():
+    parsed = parse_settings("1600dpi 1.0 ingame")  # smashnezz
+    assert parsed.dpi == 1600
+    assert parsed.sensitivity == 1.0
+
+
+def test_name_prefix_and_attached_dpi():
+    parsed = parse_settings("tokyoism 0.52 2000DPI")  # jur3ky
+    assert parsed.dpi == 2000
+    assert parsed.sensitivity == 0.52
+
+
+def test_bare_int_off_dpi_grid_not_taken():
+    parsed = parse_settings("0.52 played 1700 hours")
+    assert parsed.dpi is None
+    assert parsed.sensitivity == 0.52
+
+
+def test_two_bare_decimals_ambiguous():
+    parsed = parse_settings("0.48 hitscan 0.69 projectile 1600 dpi")
+    assert parsed.dpi == 1600
+    assert parsed.sensitivity is None  # ambiguous, kept for smarter re-parse
+
+
+def test_polling_rate_hz_not_mistaken_for_dpi():
+    parsed = parse_settings("0.85 with 2000hz polling")
+    assert parsed.dpi is None
+    assert parsed.sensitivity == 0.85
+
+
 def test_brand_only():
     parsed = parse_settings("he's on the Vaxee XE right now")
     assert parsed.mouse_brand == "Vaxee"

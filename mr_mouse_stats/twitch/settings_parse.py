@@ -42,6 +42,15 @@ _MODEL_PROSE_WORDS = frozenset({
 })
 _MODEL_MAX_WORDS = 4
 
+# Real bot responses are usually bare ("0.85 1600", "1600 0.52") with no
+# keyword to anchor on. These fallbacks only fire when the keyword patterns
+# found nothing, and only on unambiguous single candidates: a lone integer
+# from the canonical DPI steps, and a lone dotted decimal in sens range.
+_BARE_DPI_VALUES = frozenset({400, 800, 1200, 1600, 2000, 2400, 3200, 6400})
+_BARE_INT = re.compile(r"(?<![\d.])(\d{3,4})(?![\d.])(?!\s*hz)", re.I)
+_BARE_DECIMAL = re.compile(r"(?<![\d.])(\d{1,2}\.\d+)(?![\d.])")
+_SENS_MAX = 20.0
+
 
 @dataclass(frozen=True)
 class ParsedSettings:
@@ -74,11 +83,27 @@ def parse_settings(text: str) -> ParsedSettings | None:
     if match:
         dpi = int(match.group(1) or match.group(2))
         working = working[: match.start()] + working[match.end() :]
+    else:
+        candidates = {
+            int(m.group(1))
+            for m in _BARE_INT.finditer(working)
+            if int(m.group(1)) in _BARE_DPI_VALUES
+        }
+        if len(candidates) == 1:
+            dpi = candidates.pop()
 
     sensitivity = None
     match = _SENS.search(working)
     if match:
         sensitivity = float(match.group(1) or match.group(2))
+    else:
+        candidates = {
+            float(m.group(1))
+            for m in _BARE_DECIMAL.finditer(working)
+            if 0 < float(m.group(1)) <= _SENS_MAX
+        }
+        if len(candidates) == 1:
+            sensitivity = candidates.pop()
 
     mouse_brand = mouse_model = None
     match = _BRAND.search(text)
