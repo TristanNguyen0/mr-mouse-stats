@@ -1,0 +1,25 @@
+# systemd user unit for long-running passive Twitch collection.
+#
+#   mkdir -p ~/.config/systemd/user
+#   cp deploy/mr-mouse-stats-collect.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now mr-mouse-stats-collect
+#   loginctl enable-linger "$USER"   # keep it running while logged out
+#
+# Logs: journalctl --user -u mr-mouse-stats-collect -f
+
+[Unit]
+Description=mr-mouse-stats passive Twitch settings collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Adjust both paths if the repo or uv live elsewhere (%h = home directory).
+WorkingDirectory=%h/dev/mr-mouse-stats
+ExecStart=%h/.local/bin/uv run mr-mouse-stats collect-twitch
+# The IRC client reconnects internally with backoff; this only covers crashes.
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

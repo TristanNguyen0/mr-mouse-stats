@@ -25,7 +25,18 @@ uv run mr-mouse-stats ingest-liquipedia-settings
 # Admin dashboard: stale/missing twitch handles, unresolved players,
 # unparsed candidates — with append-only manual fixes (localhost, no auth)
 uv run mr-mouse-stats admin   # http://127.0.0.1:8177/
+
+# Render the public stats site (static HTML + inline SVG) into site/
+uv run mr-mouse-stats build-site
 ```
+
+## Deployment
+
+Long-running collection runs as a systemd user service; see the install
+steps in [`deploy/mr-mouse-stats-collect.service`](deploy/mr-mouse-stats-collect.service).
+After collection has accrued, refresh derived data and the site with
+`parse-observations` + `build-site`; `site/` is self-contained and can be
+served by any static host.
 
 ## Development
 
@@ -45,7 +56,7 @@ info and accept gzip. All network access goes through
 `mr_mouse_stats/http.py::LiquipediaClient`, which enforces this and caches
 responses on disk — never add another code path that hits the network.
 
-**Twitch** (stage 2, not yet implemented) — read-only anonymous IRC
+**Twitch** — read-only anonymous IRC
 (`justinfan`, no OAuth, no account). The client must never send a message: we
 passively parse bot responses triggered by other viewers, never trigger them
 ourselves.
