@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Marvel Rivals pro mouse settings — Ignite circuit</h1>
+  <p class="muted">
+    Settings history for {{ covered }} of {{ total }} tracked players so far,
+    from public Twitch chat and Liquipedia. Coverage grows as collection runs.
+  </p>
+
+  {% if dpi_chart %}
+    <h2>DPI</h2>
+    {{ dpi_chart }}
+  {% endif %}
+
+  {% if edpi_chart %}
+    <h2>eDPI (DPI × in-game sensitivity)</h2>
+    {{ edpi_chart }}
+  {% endif %}
+
+  {% if mouse_chart %}
+    <h2>Mouse popularity</h2>
+    {{ mouse_chart }}
+  {% endif %}
+
+  <h2>By role</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Role</th><th>Players with eDPI data</th><th>Median eDPI</th></tr>
+    {% for role, count, med in roles %}
+      <tr>
+        <td>{{ role }}</td>
+        <td>{{ count }}</td>
+        <td>{{ med if med is not none else '—' }}</td>
+      </tr>
+    {% endfor %}
+  </table></div>
+{% endblock %}

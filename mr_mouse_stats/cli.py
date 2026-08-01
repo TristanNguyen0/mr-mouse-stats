@@ -344,6 +344,16 @@ def cmd_parse_observations(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_build_site(args: argparse.Namespace) -> int:
+    from .site.build import build_site
+
+    conn = db.connect(args.db)
+    pages = build_site(conn, args.out, generated_at=db.now_utc()[:10])
+    conn.close()
+    print(f"wrote {pages} pages to {args.out}/")
+    return 0
+
+
 def cmd_admin(args: argparse.Namespace) -> int:
     from .admin.app import create_app
 
@@ -408,6 +418,14 @@ def main(argv: list[str] | None = None) -> int:
     parse.add_argument("--dry-run", action="store_true",
                        help="show what would be parsed without writing")
     parse.set_defaults(func=cmd_parse_observations)
+
+    build = sub.add_parser(
+        "build-site", help="render the public stats site as static HTML"
+    )
+    build.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
+    build.add_argument("--out", type=Path, default=Path("site"),
+                       help="output directory (default: site/)")
+    build.set_defaults(func=cmd_build_site)
 
     admin = sub.add_parser(
         "admin", help="run the localhost admin dashboard (no auth — do not expose)"

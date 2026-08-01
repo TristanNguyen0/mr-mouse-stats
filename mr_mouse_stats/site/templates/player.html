@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ s.display_name }} — Marvel Rivals pro mouse settings{% endblock %}
+{% block content %}
+  <h1>{{ s.display_name }}</h1>
+  <p class="muted">
+    {{ s.team or 'No team' }}{% if s.role %} · {{ s.role }}{% endif %}{% if s.country %} · {{ s.country }}{% endif %}
+    · <a href="https://liquipedia.net/marvelrivals/{{ s.liquipedia_page }}">Liquipedia</a>
+  </p>
+
+  <h2>Settings history</h2>
+  <p class="muted">Oldest first; repeated identical readings are collapsed
+    into one row with a count.</p>
+  <div class="tablewrap"><table>
+    <tr>
+      <th>First seen</th><th>Last seen</th><th>×</th><th>Source</th>
+      <th>DPI</th><th>Sens</th><th>Win</th><th>Mouse</th><th>As observed</th>
+    </tr>
+    {% for e in history %}
+      <tr>
+        <td>{{ e.first_seen_at[:10] }}</td>
+        <td>{{ e.last_seen_at[:10] }}</td>
+        <td>{{ e.times_seen }}</td>
+        <td><span class="source">{{ e.source }}</span></td>
+        <td>{{ e.dpi if e.dpi is not none else '—' }}</td>
+        <td>{{ e.sensitivity if e.sensitivity is not none else '—' }}</td>
+        <td>{{ e.windows_sens if e.windows_sens is not none else '—' }}</td>
+        <td>{{ e.mouse or '—' }}</td>
+        <td class="raw muted">{{ e.raw_text or '—' }}</td>
+      </tr>
+    {% endfor %}
+  </table></div>
+{% endblock %}

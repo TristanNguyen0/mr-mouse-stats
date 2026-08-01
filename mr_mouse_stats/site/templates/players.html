@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Players — Marvel Rivals pro mouse settings{% endblock %}
+{% block content %}
+  <h1>Players</h1>
+  <p class="muted">Latest known settings per player. Players without a link
+    have no observations yet.</p>
+  <div class="tablewrap"><table>
+    <tr>
+      <th>Player</th><th>Team</th><th>Role</th><th>Country</th>
+      <th>DPI</th><th>Sens</th><th>eDPI</th><th>Mouse</th>
+      <th>Obs.</th><th>Last seen</th>
+    </tr>
+    {% for s in summaries %}
+      <tr{% if not s.observations %} class="no-data"{% endif %}>
+        <td>
+          {% if s.observations %}
+            <a href="players/{{ slugs[s.db_id] }}.html">{{ s.display_name }}</a>
+          {% else %}
+            {{ s.display_name }}
+          {% endif %}
+        </td>
+        <td>{{ s.team or '—' }}</td>
+        <td>{{ s.role or '—' }}</td>
+        <td>{{ s.country or '—' }}</td>
+        <td>{{ s.dpi if s.dpi is not none else '—' }}</td>
+        <td>{{ s.sensitivity if s.sensitivity is not none else '—' }}</td>
+        <td>{{ s.edpi if s.edpi is not none else '—' }}</td>
+        <td>{{ s.mouse or '—' }}</td>
+        <td>{{ s.observations }}</td>
+        <td class="muted">{{ (s.last_observed_at or '—')[:10] }}</td>
+      </tr>
+    {% endfor %}
+  </table></div>
+{% endblock %}
