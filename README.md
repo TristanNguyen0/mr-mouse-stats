@@ -8,8 +8,16 @@ Milestone 1: a CLI that, given a Liquipedia tournament page, stores the roster
 of players with their Twitch (and other social) handles.
 
 ```sh
+# Stage 1: roster + twitch handles from Liquipedia
 uv run mr-mouse-stats fetch-roster "MR_Ignite/2026/Mid_Season_Finals" --dry-run
 uv run mr-mouse-stats fetch-roster "MR_Ignite/2026/Mid_Season_Finals"
+
+# Stage 2: passively observe settings-bot responses in players' chats
+uv run mr-mouse-stats collect-twitch            # runs until Ctrl-C
+uv run mr-mouse-stats collect-twitch --duration 3600 --dry-run
+
+# Derive structured settings from stored raw messages (re-runnable)
+uv run mr-mouse-stats parse-observations
 ```
 
 ## Development

@@ -182,6 +182,103 @@ def _print_summary(
     )
 
 
+def cmd_collect_twitch(args: argparse.Namespace) -> int:
+    from .twitch.irc import ReadOnlyIrcClient
+    from .twitch.runner import collect
+
+    conn = db.connect(args.db)
+    store = db.Store(conn)
+    if args.channels:
+        channels = [c.strip() for c in args.channels.split(",") if c.strip()]
+    else:
+        channels = sorted(store.player_ids_by_twitch_channel())
+    if not channels:
+        logger.error("no twitch channels: run fetch-roster first or pass --channels")
+        return 1
+    logger.info(
+        "starting passive collection",
+        extra={"fields": {"channels": len(channels), "dry_run": args.dry_run}},
+    )
+    client = ReadOnlyIrcClient(channels)
+    try:
+        stats = collect(
+            client, store=None if args.dry_run else store, duration=args.duration
+        )
+    except KeyboardInterrupt:
+        stats = None
+        print("\ninterrupted")
+    conn.close()
+    if stats is not None:
+        print(
+            f"observed {stats['messages_seen']} messages: "
+            f"{stats['trigger']} triggers, {stats['bot_response']} bot responses, "
+            f"{stats['broadcaster_response']} broadcaster responses"
+            + (" (dry run, nothing written)" if args.dry_run else "")
+        )
+    if client.unconfirmed_joins:
+        print(f"never joined (stale handles?): {', '.join(sorted(client.unconfirmed_joins))}")
+    return 0
+
+
+def cmd_parse_observations(args: argparse.Namespace) -> int:
+    from .twitch.settings_parse import parse_settings
+
+    conn = db.connect(args.db)
+    store = db.Store(conn)
+    channel_players = store.player_ids_by_twitch_channel()
+    counts = {"parsed": 0, "unparseable": 0, "unknown_channel": 0}
+    for row in store.unparsed_response_messages():
+        parsed = parse_settings(row["text"])
+        if parsed is None:
+            counts["unparseable"] += 1
+            continue
+        player_id = channel_players.get(row["channel"])
+        if player_id is None:
+            counts["unknown_channel"] += 1
+            logger.warning(
+                "response in channel with no known player",
+                extra={"fields": {"channel": row["channel"]}},
+            )
+            continue
+        counts["parsed"] += 1
+        logger.info(
+            "settings observation",
+            extra={
+                "fields": {
+                    "channel": row["channel"],
+                    "dpi": parsed.dpi,
+                    "sensitivity": parsed.sensitivity,
+                    "mouse": parsed.mouse_brand,
+                    "dry_run": args.dry_run,
+                }
+            },
+        )
+        if not args.dry_run:
+            store.add_settings_observation(
+                player_id,
+                row["observed_at"],
+                "twitch_chat",
+                channel=row["channel"],
+                raw_text=row["text"],
+                dpi=parsed.dpi,
+                sensitivity=parsed.sensitivity,
+                windows_sens=parsed.windows_sens,
+                mouse_brand=parsed.mouse_brand,
+                mouse_model=parsed.mouse_model,
+                source_message_id=row["id"],
+            )
+    if not args.dry_run:
+        store.commit()
+    conn.close()
+    print(
+        f"{counts['parsed']} observations parsed, "
+        f"{counts['unparseable']} candidates unparseable (kept for re-parse), "
+        f"{counts['unknown_channel']} in unknown channels"
+        + (" (dry run, nothing written)" if args.dry_run else "")
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="mr-mouse-stats")
     parser.add_argument("--log-level", default="INFO")
@@ -200,6 +297,29 @@ def main(argv: list[str] | None = None) -> int:
     fetch.add_argument("--dry-run", action="store_true",
                        help="fetch and parse but write nothing to the database")
     fetch.set_defaults(func=cmd_fetch_roster)
+
+    twitch = sub.add_parser(
+        "collect-twitch",
+        help="passively observe settings-bot responses in players' Twitch chats",
+    )
+    twitch.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
+    twitch.add_argument("--duration", type=float, default=0.0,
+                        help="stop after N seconds (default: run until Ctrl-C)")
+    twitch.add_argument("--channels",
+                        help="comma-separated channel override (default: all "
+                             "twitch handles in the database)")
+    twitch.add_argument("--dry-run", action="store_true",
+                        help="log capture events but write nothing")
+    twitch.set_defaults(func=cmd_collect_twitch)
+
+    parse = sub.add_parser(
+        "parse-observations",
+        help="derive settings_observations from stored raw twitch messages",
+    )
+    parse.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
+    parse.add_argument("--dry-run", action="store_true",
+                       help="show what would be parsed without writing")
+    parse.set_defaults(func=cmd_parse_observations)
 
     args = parser.parse_args(argv)
     log.setup(args.log_level)
