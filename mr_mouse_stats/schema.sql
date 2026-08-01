@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS settings_observations (
     mouse_model TEXT,
     pad_brand TEXT,
     pad_model TEXT,
+    polling_rate INTEGER,
+    zoom_sens REAL,
     ref_url TEXT
 );
 

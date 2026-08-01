@@ -182,6 +182,71 @@ def _print_summary(
     )
 
 
+def cmd_ingest_liquipedia_settings(args: argparse.Namespace) -> int:
+    from .liquipedia.settings_tables import parse_mouse_settings
+
+    conn = db.connect(args.db)
+    store = db.Store(conn)
+    players = store.resolved_players()
+    if not players:
+        logger.error("no resolved players in database: run fetch-roster first")
+        return 1
+    client = LiquipediaClient(
+        wiki=args.wiki, cache_dir=args.cache_dir, refresh=args.refresh_cache
+    )
+    pages = api.fetch_pages(client, [p["liquipedia_page"] for p in players])
+    counts = {"added": 0, "already_present": 0, "undated_skipped": 0}
+    for player in players:
+        page = pages[player["liquipedia_page"]]
+        if page.missing or page.wikitext is None:
+            continue
+        for entry in parse_mouse_settings(page.wikitext):
+            if entry.date is None:
+                counts["undated_skipped"] += 1
+                logger.warning(
+                    "mouse settings table without date; skipped",
+                    extra={"fields": {"page": page.title}},
+                )
+                continue
+            if store.has_settings_observation(player["id"], "liquipedia", entry.date):
+                counts["already_present"] += 1
+                continue
+            counts["added"] += 1
+            logger.info(
+                "liquipedia settings observation",
+                extra={
+                    "fields": {
+                        "page": page.title, "date": entry.date, "dpi": entry.dpi,
+                        "mouse": entry.brand, "dry_run": args.dry_run,
+                    }
+                },
+            )
+            if not args.dry_run:
+                store.add_settings_observation(
+                    player["id"], entry.date, "liquipedia",
+                    dpi=entry.dpi,
+                    sensitivity=entry.sensitivity,
+                    windows_sens=entry.windows,
+                    polling_rate=entry.polling,
+                    zoom_sens=entry.zoom,
+                    mouse_brand=entry.brand,
+                    mouse_model=entry.model,
+                    pad_brand=entry.pad_brand,
+                    pad_model=entry.pad_model,
+                    ref_url=entry.ref_url,
+                )
+    if not args.dry_run:
+        store.commit()
+    conn.close()
+    print(
+        f"{counts['added']} settings observations added, "
+        f"{counts['already_present']} already present, "
+        f"{counts['undated_skipped']} undated tables skipped"
+        + (" (dry run, nothing written)" if args.dry_run else "")
+    )
+    return 0
+
+
 def cmd_collect_twitch(args: argparse.Namespace) -> int:
     from .twitch.irc import ReadOnlyIrcClient
     from .twitch.runner import collect
@@ -297,6 +362,17 @@ def main(argv: list[str] | None = None) -> int:
     fetch.add_argument("--dry-run", action="store_true",
                        help="fetch and parse but write nothing to the database")
     fetch.set_defaults(func=cmd_fetch_roster)
+
+    ingest = sub.add_parser(
+        "ingest-liquipedia-settings",
+        help="parse {{Mouse settings table}} from resolved players' pages",
+    )
+    ingest.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
+    ingest.add_argument("--wiki", default="marvelrivals")
+    ingest.add_argument("--cache-dir", type=Path, default=Path(".cache/liquipedia"))
+    ingest.add_argument("--refresh-cache", action="store_true")
+    ingest.add_argument("--dry-run", action="store_true")
+    ingest.set_defaults(func=cmd_ingest_liquipedia_settings)
 
     twitch = sub.add_parser(
         "collect-twitch",

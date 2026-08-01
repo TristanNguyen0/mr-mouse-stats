@@ -37,11 +37,16 @@ def _migrate(conn: sqlite3.Connection) -> None:
         row["name"]
         for row in conn.execute("PRAGMA table_info(settings_observations)")
     }
-    if "source_message_id" not in columns:
-        conn.execute(
-            "ALTER TABLE settings_observations ADD COLUMN "
-            "source_message_id INTEGER REFERENCES twitch_messages(id)"
-        )
+    additions = {
+        "source_message_id": "INTEGER REFERENCES twitch_messages(id)",
+        "polling_rate": "INTEGER",
+        "zoom_sens": "REAL",
+    }
+    for name, ddl in additions.items():
+        if name not in columns:
+            conn.execute(
+                f"ALTER TABLE settings_observations ADD COLUMN {name} {ddl}"
+            )
 
 
 class Store:
@@ -202,7 +207,7 @@ class Store:
         allowed = {
             "channel", "raw_text", "dpi", "sensitivity", "windows_sens",
             "mouse_brand", "mouse_model", "pad_brand", "pad_model", "ref_url",
-            "source_message_id",
+            "source_message_id", "polling_rate", "zoom_sens",
         }
         unknown = set(fields) - allowed
         if unknown:
@@ -266,6 +271,22 @@ class Store:
             "WHERE platform = 'twitch'"
         ).fetchall()
         return {row["handle"]: row["player_id"] for row in rows}
+
+    def resolved_players(self) -> list[sqlite3.Row]:
+        return self.conn.execute(
+            "SELECT id, liquipedia_page FROM players "
+            "WHERE resolution_status = 'resolved' ORDER BY liquipedia_page"
+        ).fetchall()
+
+    def has_settings_observation(
+        self, player_db_id: int, source: str, observed_at: str
+    ) -> bool:
+        row = self.conn.execute(
+            "SELECT 1 FROM settings_observations "
+            "WHERE player_id = ? AND source = ? AND observed_at = ?",
+            (player_db_id, source, observed_at),
+        ).fetchone()
+        return row is not None
 
     def commit(self) -> None:
         self.conn.commit()

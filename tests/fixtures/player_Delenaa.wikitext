@@ -1,0 +1,54 @@
+{{Person Tabs|player=1|coach=2}}
+{{Infobox player
+|id=delenaa
+|ids=ant
+|image=100T Delenaa at MRIG Mid Season Finals 2025.jpg
+|name=Anthony De La Rosa 
+|birth_date=2004-01-28
+|country=United States
+|roles=Duelist, Coach
+|hero=Hela
+|hero2=Psylocke
+|status=Active
+|twitter=Delenaafps
+|twitch=delenaa
+|history={{THA}}
+}}
+
+{{PlayerIntroduction}}
+
+==Gear and Settings==
+{{Mouse settings table 
+|date=2025-07-27
+|brand=Razer|model=Viper V3|desc=
+|dpi=1600
+|polling=4000
+|sensitivity=0.64
+}}
+{{hardware table
+|width=631
+|date=2024-10-12
+|ref=<ref name="specs+">[https://www.twitch.tv/delenaa Listed in his Specs on Twitch]</ref>
+|mouse-brand=Razer|mouse-model=Viper V3|desc=
+|pad-brand=Artisan|pad-model=Hien FX Soft|pad-desc=
+|keyboard-brand=Razer|keyboard-model=Hunstman V3 Pro Mini
+|headset-brand=Astro|headset-model=A40
+}}
+
+==Achievements==
+{{tabs dynamic
+|name1=As Player
+|name2=As Coach
+|content1={{Player achievements table}}
+|content2={{Coach achievements table}}
+|This=1
+}}
+
+==Gallery==
+<gallery mode="packed-hover" heights="250px">
+100T Delenaa.png|100 Thieves Delenaa
+</gallery>
+
+==References==
+{{Reflist}}
+{{Player team roster}}
