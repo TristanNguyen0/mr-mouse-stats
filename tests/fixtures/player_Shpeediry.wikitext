@@ -1,0 +1,47 @@
+{{Liquipedia links|overwatch=Speedily}}
+{{Person Tabs}}
+{{Infobox player
+|id=Shpeediry
+|image=ENVY Shpeediry at MRIG Mid Season Finals 2025.jpg
+|name=Nicholas Zou
+|country=United States
+|status=Active
+|birth_date=2004-08-26
+|roles=Duelist
+|hero1=Human Torch
+|hero2=Psylocke
+|hero3=Star-Lord
+|twitter=shpeediry
+|twitch=shpeediry
+|history={{THA}}
+}}
+
+{{PlayerIntroduction}}
+
+==Gear and settings==
+{{Mouse settings table
+|date=2023-03-29
+|ref=<ref name="Nightbot Commands - speedily_">[https://nightbot.tv/t/speedily_/commands Nightbot Commands - speedily_]</ref>
+|brand=Finalmouse
+|model=Starlight Pro TenZ
+|dpi=800
+|windows=6
+|sensitivity=6
+|pad-brand=
+|pad-model=
+}}
+
+==Achievements==
+{{Player achievements table}}
+
+==Awards==
+{{Player awards table}}
+
+==Gallery==
+<gallery mode="packed-hover" heights="250px">
+ENVY Shpeediry.png|Team ENVY Shpeediry
+</gallery>
+
+==References==
+{{Reflist}}
+{{Player team roster}}

@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+dist/
+
+# local data and http cache
+data/
+.cache/
+*.sqlite3
+
+# local-only assistant context, not for the public repo
+.claude/
+CLAUDE.md
+CLAUDE.local.md

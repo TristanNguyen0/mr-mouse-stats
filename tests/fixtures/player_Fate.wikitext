@@ -1,0 +1,32 @@
+{{Liquipedia links|overwatch=fate (British Player)}}
+{{Person Tabs}}
+{{Infobox player
+|id=fate
+|image=Rad EU Fate at Ignite Mid Season Finals 2025.png
+|name=Max Currie
+|birth_date=2006-01-05
+|country=United Kingdom
+|roles=Strategist
+|hero=Luna Snow
+|hero2=Jeff
+|hero3=Cloak & Dagger
+|status=Active
+|twitter=fateMR_
+|twitch=fatemr_
+|faceit=fate_ow
+|youtube=@fate.rivals
+|discord=SkAn4v8Nzs
+|tiktok=fategb
+|team=Natus Vincere
+|history={{THA}}
+|achievements={{LeagueIconSmall/ignite|MR_Ignite/2025/Mid_Season_Finals}} [[MR_Ignite/2025/Mid_Season_Finals|Mid Season Finals 2025]] {{TeamIcon|RAD EU|2025-08-10}}
+}}
+
+{{PlayerIntroduction}} He is a former [[overwatch:Fate (British player)|Overwatch]] player.
+
+==Achievements==
+{{Player achievements table}}
+
+==References==
+{{Reflist}}
+{{Player team roster}}

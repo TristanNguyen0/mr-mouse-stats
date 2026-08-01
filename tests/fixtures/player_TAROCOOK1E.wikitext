@@ -1,0 +1,28 @@
+{{Liquipedia links|overwatch=Zhong_Yunlong}}
+{{Person Tabs}}
+{{Infobox player
+|id=TAROCOOK1E
+|image=OUG TAROCOOK1E at MRIG Mid Season Finals 2025.jpg
+|name=钟云龙
+|romanized_name=Zhong Yunlong
+|birth_date=2000-08-21
+|country=China
+|status=Active
+|team=OUG
+|roles=Duelist
+|hero=Winter Soldier
+|hero2=Psylocke
+|hero3=Phoenix
+|bilibili=3546635086858552
+|huya=17916746
+|history={{THA}}
+}}
+
+{{PlayerIntroduction}}
+
+==Achievements==
+{{Player achievements table}}
+
+==References==
+{{Reflist}}
+{{Player team roster}}

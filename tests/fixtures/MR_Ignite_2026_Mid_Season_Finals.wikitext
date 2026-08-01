@@ -1,0 +1,516 @@
+{{DISPLAYTITLE:Marvel Rivals Ignite 2026: Mid Season Finals}}
+{{Marvel_Rivals_Ignite_Navbox/2026}}
+{{Infobox league
+|liquipediatier=1
+|series=Marvel Rivals Ignite
+|publishertier=sponsored
+|highlighted=true
+|name=Marvel Rivals Ignite 2026: Mid Season Finals
+|image=Marvel Rivals Ignite full allmode.png
+|icon=Marvel Rivals Ignite allmode.png
+|tickername=MRIG 2026: Mid Season Finals
+|organizer=NetEase
+|organizer2=Marvel Games|organizer2-link=https://en.wikipedia.org/wiki/Marvel_Games
+|sponsor=
+|type=Offline
+|country=United States
+|city=Los Angeles 
+|venue=WePlay Studios
+|sdate=2026-07-29
+|edate=2026-08-01
+|platform=pc
+|web=https://www.marvelrivalsesports.com/20260706/42828_1306640.html
+|youtube=@MarvelRivals
+|twitter=MarvelRivals
+|twitch=MarvelRivals
+|discord=marvelrivals
+|instagram=marvelrivals
+|facebook=marvelrivals
+|rulebook=
+|prizepoolusd=500000
+|team_number=10
+|next=MR_Ignite/2026/Grand_Finals{{!}}Grand Final
+}}
+
+==Format==
+* '''Play-In Stage''': July ''29<sup>th</sup>, 2026''
+** Double Elimination qualifier bracket
+** All matches are {{Abbr/Bo3}}
+** {{Bgcolortext|up|Top 2 teams}} qualify to '''Main Stage'''
+* '''Main Stage''': July ''30<sup>th</sup>'' - August ''1<sup>st</sup>, 2026''
+** Double Elimination bracket
+** All matches ''(excl. UB Quarterfinals, UB Semifinals & Grand-Final)'' are {{Abbr/Bo5}}
+** UB Quarterfinals, UB Semifinals is {{Abbr/Bo3}}
+** Grand Final is {{Abbr/Bo7}}
+
+==Map Pool==
+{{MapPool
+|mode1=Convergence|map1=Hall of Djalia,Heart of Heaven,Shin-Shibuya,Symbiotic Surface,Central Park,Lower Manhattan
+|mode2=Domination|map2=Birnin T'Challa,Celestial Husk,Hell's Heaven, Krakoa
+|mode3=Convoy|map3=Arakko,Spider-Islands,Yggdrasill Path,Midtown,Museum of Contemplation
+}}
+
+==Prize Pool==
+{{TeamPrizePool|points1=mri2026
+|tournament1=#Play-In_Stage
+|tournament2=#Main_Stage
+|{{Slot|usdprize=160000|points1=8}}
+|{{Slot|usdprize=80000|points1=6}}
+|{{Slot|usdprize=60000|points1=5}}
+|{{Slot|usdprize=50000|points1=4}}
+|{{Slot|usdprize=30000|count=2|points1=3}}
+|{{Slot|usdprize=25000|count=2|points1=2}}
+|{{Slot|usdprize=20000|points1=1}}
+|{{Slot|usdprize=20000|points1=1}}
+|adjacentContent=
+	{{AwardPrizePool
+		|{{Slot|award=MVP|usdprize=|{{SoloOpponent||team=}}}}
+	}}
+}}
+
+==Participants==
+{{TeamParticipantsControls|showplayerinfo=true}}
+===Main Stage Teams===
+{{TeamParticipants
+|{{Opponent|Liquid Citadel
+ |players={{Persons
+  |{{Person|role=dps|energy}}
+  |{{Person|role=dps|Shpeediry}}
+  |{{Person|role=tank|Polly}}
+  |{{Person|role=tank|Veswa}}
+  |{{Person|role=sup|nero}}
+  |{{Person|role=sup|cooper}}
+  
+  |{{Person|role=tank|SparkChief|status=sub}}
+  |{{Person|role=sup|Dinks|status=sub}}
+  |{{Person|role=coach|LegitRc|type=staff}}
+  |{{Person|role=coach|Gator|type=staff}}
+  |{{Person|role=analyst|ArianWever|type=staff}}
+ }}
+  |qualification={{Qualification|method=qual|page=MR Ignite/2026/Stage_1/Americas|text=Americas Stage 1|placement=1}}
+}}
+
+|{{Opponent|Swamp Gaming 
+ |players={{Persons
+  |{{Person|role=dps|Melophobia}}
+  |{{Person|role=dps|Daes}}
+  |{{Person|role=tank|CRAZMANG}}
+  |{{Person|role=tank|Scattergengi}}
+  |{{Person|role=sup|forkydog}}
+  |{{Person|role=sup|Valentina Eve}}
+
+  |{{Person|role=dps|Amadien|status=sub}}
+  |{{Person|role=coach|Fauwkz|type=staff}}
+  |{{Person|role=analyst|Skyza|type=staff|trophies=1}}
+  |{{Person|role=analyst|DUNC4N|type=staff}}
+ }}
+  |qualification={{Qualification|method=qual|page=MR Ignite/2026/Stage_1/Americas|text=Americas Stage 1|placement=2}}
+}}
+
+|{{Opponent|Natus Vincere
+ |players={{Persons
+  |{{Person|role=dps|Jur3ky}}
+  |{{Person|role=dps|Terra}}
+  |{{Person|role=tank|Raajaro|trophies=1}}
+  |{{Person|role=tank|TrqstMe|trophies=1}}
+  |{{Person|role=sup|fate|trophies=1}}
+  |{{Person|role=sup|Lv1Crook|trophies=1}}
+
+  |{{Person|role=dps|Kqz|flag=kw|status=sub}}
+  |{{Person|role=dps|pky|status=sub}}
+  |{{Person|role=Coach|Shuh|type=staff}}
+ }}
+  |qualification={{Qualification|method=qual|page=MR Ignite/2026/Stage_1/EMEA|text=EMEA Stage 1|placement=1}}
+}}
+
+|{{Opponent|Virtus.pro
+ |players={{Persons
+  |{{Person|role=dps|phi}}
+  |{{Person|role=dps|SparkR}}
+  |{{Person|role=tank|Finnsi}}
+  |{{Person|role=tank|Nevix}}
+  |{{Person|role=sup|dridro}}
+  |{{Person|role=sup|Sypeh}}
+
+  |{{Person|role=coach|eqo|type=staff}}
+ }}
+  |qualification={{Qualification|method=qual|page=MR Ignite/2026/Stage_1/EMEA|text=EMEA Stage 1|placement=2}}
+}}
+
+|{{Opponent|gen.g esports
+ |players={{Persons
+  |{{Person|role=dps|Bobo}}
+  |{{Person|role=dps|FMCL}}
+  |{{Person|role=tank|Zenstarry}}
+  |{{Person|role=tank|duep}}
+  |{{Person|role=sup|Alx|team=Team Heretics}}
+  |{{Person|role=sup|Skittles}}
+  
+  |{{Person|role=sup|Salvation|status=sub|played=false}}
+ }}
+  |qualification={{Qualification|method=qual|page=MR Ignite/2026/Stage_1/Pacific|text=Pacific Stage 1|placement=1}}
+  |notes={{Notes
+  |{{Notes|August 27th - {{player|Alx|pos=sup|flag=bg}} substitutes in for {{player|Salvation|pos=sup|flag=cn}} as he couldn't obtain his visa on time. <ref name="Alx subs for Salvation.">{{cite web|url=https://x.com/geng_gold/status/2082254107474313543|title=Gen.G Marvel Rivals Roster Update:|author='''[[Gen.G Esports]]'''|date=2026-07-29}}</ref>|highlighted=true}}
+  }}
+}}
+
+|{{Opponent|OUG
+ |players={{Persons
+  |{{Person|role=dps|TAROCOOK1E}}
+  |{{Person|role=dps|ILLICIT}}
+  |{{Person|role=tank|Yexin}}
+  |{{Person|role=tank|Wenxuyan}}
+  |{{Person|role=sup|Disaster}}
+  |{{Person|role=sup|SVALD}}
+
+  |{{Person|role=sup|XiaoZhuang|status=sub|played=false}}
+  |{{Person|role=coach|eagle|type=staff}}
+ }}
+  |qualification={{Qualification|method=qual|page=MR Ignite/2026/Stage_1/China|text=China Stage 1|placement=1}}
+}}
+}}
+
+===Play-In Stage Teams===
+{{TeamParticipants
+|{{Opponent|100 Thieves
+ |players={{Persons
+  |{{Person|role=dps|delenaa}}
+  |{{Person|role=dps|Self}}
+  |{{Person|role=tank|Vinnie}}
+  |{{Person|role=tank|TTK}}
+  |{{Person|role=sup|Malenia}}
+  |{{Person|role=sup|Wyni}}
+  
+  |{{Person|role=head coach|iRemiix|type=staff}}
+ }}
+  |qualification={{Qualification|method=qual|page=MR Ignite/2026/Stage_1/Americas|text=Americas Stage 1|placement=3}}
+}}
+
+|{{Opponent|RAD
+ |players={{Persons
+  |{{Person|role=dps|crazykitty}}
+  |{{Person|role=dps|SmashNezz}}
+  |{{Person|role=tank|ducky1}}
+  |{{Person|role=tank|lugiagoat}}
+  |{{Person|role=sup|mash}}
+  |{{Person|role=sup|Vertigo}}
+
+  |{{Person|role=dps|Etsu|status=sub}}
+  |{{Person|role=sup|Jakeingit|flag=uk|status=sub}}
+  |{{Person|role=coach|Denis|type=staff}}
+  |{{Person|role=analyst|Prosper|type=staff}}
+ }}
+  |qualification={{Qualification|method=qual|page=MR Ignite/2026/Stage_1/EMEA|text=EMEA Stage 1|placement=3}}
+}}
+
+|{{Opponent|REJECT
+ |players={{Persons
+  |{{Person|role=dps|Brownie}}
+  |{{Person|role=dps|Yaki}}
+  |{{Person|role=tank|piggy}}
+  |{{Person|role=tank|GARGOYLE}}
+  |{{Person|role=sup|SeungHoon}}
+  |{{Person|role=sup|Lastro}}
+
+  |{{Person|role=dps|finale|status=sub|played=false}}
+  |{{Person|role=coach|Jmac|type=staff}}
+ }}
+  |qualification={{Qualification|method=qual|page=MR Ignite/2026/Stage_1/Pacific|text=Pacific Stage 1|placement=2}}
+}}
+
+|{{Opponent|Aconyx
+ |players={{Persons
+  |{{Person|role=dps|Kurisu}}
+  |{{Person|role=dps|Kenvy Snake}}
+  |{{Person|role=tank|Kami}}
+  |{{Person|role=tank|HetLot}}
+  |{{Person|role=sup|Egg tart}}
+  |{{Person|role=sup|Ghost}}
+
+  |{{Person|role=sup|R9|status=sub|played=false}}
+  |{{Person|role=coach|WinWinQ|type=staff}}
+  |{{Person|role=analyst|Crocodile Tornado|type=staff}}
+ }}
+  |qualification={{Qualification|method=qual|page=MR Ignite/2026/Stage_1/China|text=China Stage 1|placement=2}}
+}}
+}}
+
+==Results==
+==={{Stage|Play-In Stage}}===
+{{Bracket|Bracket/4-1Q-U-2L1D-1Q|id=WwfBn60kya
+
+<!-- Upper Bracket Semifinals -->
+|R1M1={{Match
+	|bestof=3
+    |date=2026-07-30 - 03:00 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|REJECT}}
+    |opponent2={{TeamOpponent|100 Thieves}}
+    |map1={{Map|map=Krakoa|score1=0|score2=2|winner=2}}
+    |map2={{Map|map=Museum of Contemplation|score1=1|score2=2|winner=2}}
+    }}
+|R1M2={{Match
+	|bestof=3
+    |date=2026-07-30 - 04:40 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Aconyx}}
+    |opponent2={{TeamOpponent|RAD}}
+    |map1={{Map|map=Hell's Heaven|score1=0|score2=2|winner=2}}
+    |map2={{Map|map=Midtown|score1=0|score2=3|winner=2}}
+    }}
+
+<!-- Upper Bracket Final -->
+|R2M1={{Match
+	|bestof=3
+    |date=2026-07-30 - 06:20 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|100 Thieves}}
+    |opponent2={{TeamOpponent|RAD}}
+    |map1={{Map|map=Celestial Husk|score1=1|score2=2|winner=2}}
+    |map2={{Map|map=Museum of Contemplation|score1=3|score2=2|winner=1}}
+    |map3={{Map|map=Hall of Djalia|score1=3|score2=2|winner=1}}
+    }}
+
+<!-- Lower Bracket Semifinal -->
+|R1M3={{Match
+	|bestof=3
+    |date=2026-07-30 - 08:00 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|REJECT}}
+    |opponent2={{TeamOpponent|Aconyx}}
+    |map1={{Map|map=Krakoa|score1=2|score2=0|winner=1}}
+    |map2={{Map|map=Museum of Contemplation|score1=3|score2=2|winner=1}}
+    }}
+
+<!-- Lower Bracket Final -->
+|R2M2={{Match
+	|bestof=3
+    |date=2026-07-30 - 09:40 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|RAD}}
+    |opponent2={{TeamOpponent|REJECT}}
+    |map1={{Map|map=Birnin T'Challa|score1=0|score2=2|winner=2}}
+    |map2={{Map|map=Hall of Djalia|score1=2|score2=1|winner=1}}
+    |map3={{Map|map=Museum of Contemplation|score1=3|score2=2|winner=1}}
+    }}
+}}
+
+==={{Stage|Main Stage}}===
+{{Bracket|Bracket/8U4L2DSL1D|id=Bk5qugloQL
+
+<!-- Upper Bracket Quarterfinals -->
+|R1M1={{Match
+	|bestof=3
+    |date=2026-07-31 - 03:00 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Natus Vincere}}
+    |opponent2={{TeamOpponent|100 Thieves}}
+    |map1={{Map|map=Birnin T'Challa|score1=2|score2=0|winner=1}}
+    |map2={{Map|map=Museum of Contemplation|score1=2|score2=1|winner=1}}
+    }}
+|R1M2={{Match
+	|bestof=3
+    |date=2026-07-31 - 04:40 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Gen.G Esports}}
+    |opponent2={{TeamOpponent|Virtus.Pro}}
+    |map1={{Map|map=Celestial Husk|score1=2|score2=1|winner=1}}
+    |map2={{Map|map=Museum of Contemplation|score1=2|score2=3|winner=2}}
+    |map3={{Map|map=Hall of Djalia|score1=0|score2=2|winner=2}}
+    }}
+|R1M3={{Match
+	|bestof=3
+    |date=2026-07-31 - 06:20 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Liquid Citadel}}
+    |opponent2={{TeamOpponent|RAD}}
+    |map1={{Map|map=Krakoa|score1=2|score2=0|winner=1}}
+    |map2={{Map|map=Hall of Djalia|score1=3|score2=4|winner=2}}
+	|map3={{Map|map=Yggdrasill Path|score1=3|score2=0|winner=1}}
+    }}
+|R1M4={{Match
+	|bestof=3
+    |date=2026-07-31 - 08:00 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Swamp Gaming}}
+    |opponent2={{TeamOpponent|OUG}}
+    |map1={{Map|map=Celestial Husk|score1=2|score2=0|winner=1}}
+    |map2={{Map|map=Midtown|score1=3|score2=2|winner=1}}
+    }}
+
+<!-- Upper Bracket Semifinals -->
+|R2M1={{Match
+	|bestof=3
+    |date=2026-08-01 - 03:00 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Natus Vincere}}
+    |opponent2={{TeamOpponent|Virtus.Pro}}
+    |map1={{Map|map=Krakoa|score1=2|score2=1|winner=1}}
+    |map2={{Map|map=Arakko|score1=2|score2=1|winner=1}}
+    }}
+|R2M2={{Match
+	|bestof=3
+    |date=2026-08-01 - 04:40 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Liquid Citadel}}
+    |opponent2={{TeamOpponent|Swamp Gaming}}
+    |map1={{Map|map=Birnin T'Challa|score1=2|score2=1|winner=1}}
+    |map2={{Map|map=Spider-Islands|score1=1|score2=0|winner=1}}
+    }}
+
+<!-- Upper Bracket Final -->
+|R4M1={{Match
+	|bestof=5
+    |date=2026-08-02 - 03:00 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Natus Vincere}}
+    |opponent2={{TeamOpponent|Liquid Citadel}}
+    |map1={{Map|map=|score1=|score2=|winner=}}
+    |map2={{Map|map=|score1=|score2=|winner=}}
+    |map3={{Map|map=|score1=|score2=|winner=}}
+    |map4={{Map|map=|score1=|score2=|winner=}}
+    |map5={{Map|map=|score1=|score2=|winner=}}
+    }}
+
+<!-- Lower Bracket Round 1 -->
+|R1M5={{Match
+	|bestof=5
+    |date=2026-07-31 - 09:40 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|100 Thieves}}
+    |opponent2={{TeamOpponent|Gen.G Esports}}
+    |map1={{Map|map=Hell's Heaven|score1=0|score2=2|winner=2}}
+    |map2={{Map|map=Central Park|score1=3|score2=4|winner=2}}
+    |map3={{Map|map=Museum of Contemplation|score1=1|score2=0|winner=1}}
+    |map4={{Map|map=Celestial Husk|score1=0|score2=2|winner=2}}
+    }}
+|R1M6={{Match
+	|bestof=5
+    |date=2026-07-31 - 12:20 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|RAD}}
+    |opponent2={{TeamOpponent|OUG}}
+    |map1={{Map|map=Celestial Husk|score1=2|score2=1|winner=1}}
+    |map2={{Map|map=Midtown|score1=3|score2=2|winner=1}}
+    |map3={{Map|map=Central Park|score1=3|score2=2|winner=1}}
+    }}
+
+<!-- Lower Bracket Quarterfinals -->
+|R2M3={{Match
+	|bestof=5
+    |date=2026-08-01 - 09:00 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Swamp Gaming}}
+    |opponent2={{TeamOpponent|Gen.G Esports}}
+    |map1={{Map|map=Birnin T'Challa|score1=2|score2=0|winner=1}}
+    |map2={{Map|map=Central Park|score1=4|score2=5|winner=2}}
+    |map3={{Map|map=Spider-Islands|score1=2|score2=1|winner=1}}
+    |map4={{Map|map=Midtown|score1=2|score2=1|winner=1}}
+    }}
+|R2M4={{Match
+	|bestof=5
+    |date=2026-08-01 - 06:20 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Virtus.Pro}}
+    |opponent2={{TeamOpponent|RAD}}
+    |map1={{Map|map=Krakoa|score1=2|score2=0|winner=1}}
+    |map2={{Map|map=Spider-Islands|score1=2|score2=3|winner=2}}
+    |map3={{Map|map=Hall of Djalia|score1=2|score2=3|winner=2}}
+    |map4={{Map|map=Celestial Husk|score1=1|score2=2|winner=2}}
+    }}
+
+<!-- Lower Bracket Semifinal -->
+|R3M1={{Match
+	|bestof=5
+    |date=2026-08-01 - 11:40 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|Swamp Gaming}}
+    |opponent2={{TeamOpponent|RAD}}
+    |map1={{Map|map=Celestial Husk|score1=1|score2=2|winner=2}}
+    |map2={{Map|map=Spider-Islands|score1=0|score2=1|winner=2}}
+    |map3={{Map|map=Symbiotic Surface|score1=4|score2=5|winner=2}}
+    }}
+
+<!-- Lower Bracket Final -->
+|R4M2={{Match
+	|bestof=5
+    |date=2026-08-02 - 05:40 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|}}
+    |opponent2={{TeamOpponent|RAD}}
+    |map1={{Map|map=|score1=|score2=|winner=}}
+    |map2={{Map|map=|score1=|score2=|winner=}}
+    |map3={{Map|map=|score1=|score2=|winner=}}
+    |map4={{Map|map=|score1=|score2=|winner=}}
+    |map5={{Map|map=|score1=|score2=|winner=}}
+    }}
+
+<!-- Grand Final -->
+|R5M1={{Match
+	|bestof=7
+    |date=2026-08-02 - 08:20 {{Abbr/AEST}}
+    |twitch=|youtube=|vod=
+    |opponent1={{TeamOpponent|}}
+    |opponent2={{TeamOpponent|}}
+    |map1={{Map|map=|score1=|score2=|winner=}}
+    |map2={{Map|map=|score1=|score2=|winner=}}
+    |map3={{Map|map=|score1=|score2=|winner=}}
+    |map4={{Map|map=|score1=|score2=|winner=}}
+    |map5={{Map|map=|score1=|score2=|winner=}}
+    }}
+}}
+
+==Broadcast==
+===Streams===
+{{Streams
+|lang1=us
+|twitch1=marvelrivals
+|lang2=jp
+|twitch2=marvelrivalsjp
+|lang3=es
+|twitch3=marvelrivalsesp
+|lang4=cn
+|bilibili4=1882763118
+|douyu4=12215079
+}}
+
+===Broadcast Talent===
+{{box|start|padding=1em}}
+{{BroadcasterCard
+|position=Host
+|b1=Cozy
+|b2=Tetcher
+}}
+{{BroadcasterCard
+|position=Commentator|lang=English
+|b1=Dogman
+|b2=Gaskin|b3name=Daniel Gaskin|b3flag=uk
+|b3=IRunShibb
+|b4=LEGDAY
+|b5=RyanCentral
+|b6=Vodible
+}}
+{{box|break|padding=1em}}
+{{BroadcasterCard
+|title=Japanese Commentators:
+|position=Commentator|lang=Spanish
+|b1=JT3
+|b2=Naiki
+}}
+{{BroadcasterCard
+|title=Spanish Commentators:
+|position=Commentator|lang=Spanish
+|b1=Boax|b1name=Camila Hernandez|b1flag=cl
+|b2=Nekta|b2name=Mariano Di Cicco|b2flag=ar
+|b3=PancakePOW|b3name=Paola Alejandra|b3flag=mx
+|b4=Rapsor|b4flag=pe
+|b5=Wings667|b5flag=mx
+}}
+{{box|end}}
+
+==Additional Content==
+===Country Representation===
+{{Country representation}}
+
+==References==
+{{Reflist}}

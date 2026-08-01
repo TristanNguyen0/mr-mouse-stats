@@ -1,0 +1,26 @@
+{{Person Tabs}}
+{{Infobox player
+|id=energy
+|ids=nrg
+|image=
+|name=Jovan
+|birth_date=2008-07-23
+|country=United States
+|roles=Duelist
+|hero=Hela
+|hero2=Winter Soldier
+|hero3=Namor
+|status=Active
+|twitch=energy
+|twitter=enwrgyy
+|history={{THA}}
+}}
+
+{{PlayerIntroduction}}
+
+==Achievements==
+{{Player achievements table}}
+
+==References==
+{{Reflist}}
+{{Player team roster}}

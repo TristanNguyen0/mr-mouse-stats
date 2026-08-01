@@ -1,0 +1,26 @@
+{{Liquipedia links|fortnite=Jur3ky}}
+{{Person Tabs}}
+{{Infobox player
+|id=Jur3ky
+|image=
+|name=Jurica Risek
+|birth_date=2004-11-22
+|country=Croatia
+|status=Active
+|roles=Duelist
+|hero1=Human Torch
+|twitter=Jur3kyarc
+|youtube=channel/UCyLD9rO6FaCcTku_loFwhbw
+|twitch=jur3ky
+|instagram=jur3ky
+|history={{THA}}
+}}
+
+{{PlayerIntroduction}}
+
+==Achievements==
+{{Player achievements table}}
+
+==References==
+{{Reflist}}
+{{Player team roster}}
