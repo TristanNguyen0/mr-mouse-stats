@@ -12,7 +12,7 @@ import time
 from collections import Counter
 from typing import Callable
 
-from ..db import Store
+from ..db import Store, now_utc
 from .capture import KIND_TRIGGER, Correlator
 from .frames import ChatMessage
 from .irc import ReadOnlyIrcClient
@@ -49,6 +49,13 @@ def collect(
                     "channels never confirmed join (suspended/renamed handle?)",
                     extra={"fields": {"channels": sorted(missing)}},
                 )
+            if store is not None:
+                checked_at = now_utc()
+                for channel in client.channels:
+                    store.upsert_channel_join_status(
+                        channel, channel not in missing, checked_at
+                    )
+                store.commit()
         if item is None:
             continue
         stats["messages_seen"] += 1

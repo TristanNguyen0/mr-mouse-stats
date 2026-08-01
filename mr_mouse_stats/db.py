@@ -47,6 +47,13 @@ def _migrate(conn: sqlite3.Connection) -> None:
             conn.execute(
                 f"ALTER TABLE settings_observations ADD COLUMN {name} {ddl}"
             )
+    social_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(social_accounts)")
+    }
+    if "retired_at" not in social_columns:
+        # append-only handle correction: old handle rows get retired_at
+        # stamped once; corrected handles are appended as new rows
+        conn.execute("ALTER TABLE social_accounts ADD COLUMN retired_at TEXT")
 
 
 class Store:
@@ -268,9 +275,30 @@ class Store:
         """Map lowercase twitch handle -> players.id."""
         rows = self.conn.execute(
             "SELECT LOWER(handle) handle, player_id FROM social_accounts "
-            "WHERE platform = 'twitch'"
+            "WHERE platform = 'twitch' AND retired_at IS NULL"
         ).fetchall()
         return {row["handle"]: row["player_id"] for row in rows}
+
+    def retire_social_account(self, account_id: int, retired_at: str) -> None:
+        self.conn.execute(
+            "UPDATE social_accounts SET retired_at = ? "
+            "WHERE id = ? AND retired_at IS NULL",
+            (retired_at, account_id),
+        )
+
+    def upsert_channel_join_status(
+        self, channel: str, confirmed: bool, checked_at: str
+    ) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO channel_join_status (channel, confirmed, last_checked_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT (channel) DO UPDATE SET
+                confirmed = excluded.confirmed,
+                last_checked_at = excluded.last_checked_at
+            """,
+            (channel.lower(), int(confirmed), checked_at),
+        )
 
     def resolved_players(self) -> list[sqlite3.Row]:
         return self.conn.execute(

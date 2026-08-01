@@ -95,6 +95,15 @@ CREATE TABLE IF NOT EXISTS twitch_messages (
     text TEXT NOT NULL
 );
 
+-- Collector join health, written by collect-twitch after its join grace
+-- period. confirmed=0 usually means the handle is stale (renamed or
+-- suspended channel) — surfaced by the admin dashboard for manual fixing.
+CREATE TABLE IF NOT EXISTS channel_join_status (
+    channel TEXT PRIMARY KEY,
+    confirmed INTEGER NOT NULL,
+    last_checked_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_twitch_messages_channel
     ON twitch_messages (channel, observed_at);
 CREATE INDEX IF NOT EXISTS idx_roster_entries_tournament
