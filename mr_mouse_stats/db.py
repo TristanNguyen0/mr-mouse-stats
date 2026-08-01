@@ -27,7 +27,21 @@ def connect(path: Path | str) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     schema = resources.files("mr_mouse_stats").joinpath("schema.sql").read_text()
     conn.executescript(schema)
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Additive migrations for databases created by older schema versions."""
+    columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(settings_observations)")
+    }
+    if "source_message_id" not in columns:
+        conn.execute(
+            "ALTER TABLE settings_observations ADD COLUMN "
+            "source_message_id INTEGER REFERENCES twitch_messages(id)"
+        )
 
 
 class Store:
@@ -188,6 +202,7 @@ class Store:
         allowed = {
             "channel", "raw_text", "dpi", "sensitivity", "windows_sens",
             "mouse_brand", "mouse_model", "pad_brand", "pad_model", "ref_url",
+            "source_message_id",
         }
         unknown = set(fields) - allowed
         if unknown:
@@ -201,6 +216,56 @@ class Store:
             values,
         )
         return cursor.lastrowid
+
+    def record_twitch_message(
+        self,
+        msg_id: str | None,
+        observed_at: str,
+        channel: str,
+        login: str,
+        display_name: str | None,
+        user_id: str | None,
+        badges: str | None,
+        kind: str,
+        text: str,
+        trigger_id: int | None = None,
+    ) -> int | None:
+        """Append a raw chat capture. Returns None when the Twitch message
+        uuid was already recorded (reconnect overlap)."""
+        cursor = self.conn.execute(
+            """
+            INSERT INTO twitch_messages
+                (msg_id, observed_at, channel, login, display_name, user_id,
+                 badges, kind, trigger_id, text)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (msg_id) DO NOTHING
+            """,
+            (msg_id, observed_at, channel, login, display_name, user_id,
+             badges, kind, trigger_id, text),
+        )
+        return cursor.lastrowid if cursor.rowcount == 1 else None
+
+    def unparsed_response_messages(self) -> list[sqlite3.Row]:
+        """Candidate responses with no derived settings observation yet."""
+        return self.conn.execute(
+            """
+            SELECT * FROM twitch_messages tm
+            WHERE tm.kind IN ('bot_response', 'broadcaster_response')
+              AND NOT EXISTS (
+                  SELECT 1 FROM settings_observations so
+                  WHERE so.source_message_id = tm.id
+              )
+            ORDER BY tm.observed_at
+            """
+        ).fetchall()
+
+    def player_ids_by_twitch_channel(self) -> dict[str, int]:
+        """Map lowercase twitch handle -> players.id."""
+        rows = self.conn.execute(
+            "SELECT LOWER(handle) handle, player_id FROM social_accounts "
+            "WHERE platform = 'twitch'"
+        ).fetchall()
+        return {row["handle"]: row["player_id"] for row in rows}
 
     def commit(self) -> None:
         self.conn.commit()

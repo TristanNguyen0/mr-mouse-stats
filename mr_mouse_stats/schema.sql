@@ -75,6 +75,26 @@ CREATE TABLE IF NOT EXISTS settings_observations (
     ref_url TEXT
 );
 
+-- Raw capture of trigger commands and candidate responses observed in
+-- Twitch chat. Append-only source of truth; settings_observations rows
+-- are derived from it by the parse pass and can be re-derived as the
+-- parser improves.
+CREATE TABLE IF NOT EXISTS twitch_messages (
+    id INTEGER PRIMARY KEY,
+    msg_id TEXT UNIQUE,        -- Twitch message uuid; dedupes reconnect overlap
+    observed_at TEXT NOT NULL, -- from server-side tmi-sent-ts
+    channel TEXT NOT NULL,
+    login TEXT NOT NULL,
+    display_name TEXT,
+    user_id TEXT,
+    badges TEXT,
+    kind TEXT NOT NULL,        -- trigger | bot_response | broadcaster_response
+    trigger_id INTEGER REFERENCES twitch_messages(id),
+    text TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_twitch_messages_channel
+    ON twitch_messages (channel, observed_at);
 CREATE INDEX IF NOT EXISTS idx_roster_entries_tournament
     ON roster_entries (tournament_id);
 CREATE INDEX IF NOT EXISTS idx_social_accounts_player
