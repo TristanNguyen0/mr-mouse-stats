@@ -18,6 +18,13 @@ uv run mr-mouse-stats collect-twitch --duration 3600 --dry-run
 
 # Derive structured settings from stored raw messages (re-runnable)
 uv run mr-mouse-stats parse-observations
+
+# Settings history already published on Liquipedia player pages
+uv run mr-mouse-stats ingest-liquipedia-settings
+
+# Admin dashboard: stale/missing twitch handles, unresolved players,
+# unparsed candidates — with append-only manual fixes (localhost, no auth)
+uv run mr-mouse-stats admin   # http://127.0.0.1:8177/
 ```
 
 ## Development

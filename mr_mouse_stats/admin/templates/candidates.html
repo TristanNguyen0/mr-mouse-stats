@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Unparsed candidates</h1>
+<p class="muted">Captured responses the settings parser couldn't structure.
+Enter values manually (appends a settings observation linked to the raw
+message) or dismiss non-settings chatter.</p>
+<table>
+  <tr><th>When</th><th>Channel</th><th>From</th><th>Text</th><th>Action</th></tr>
+  {% for row in rows %}
+  <tr>
+    <td class="muted">{{ row.observed_at }}</td>
+    <td>{{ row.channel }}</td>
+    <td>{{ row.login }} <span class="pill">{{ row.kind | replace('_response','') }}</span><br>
+        <span class="muted">re: {{ row.trigger_text or '?' }}</span></td>
+    <td>{{ row.text }}</td>
+    <td>
+      <form class="inline" method="post" action="{{ url_for('actions.manual_observation', message_id=row.id) }}">
+        <input type="number" name="dpi" placeholder="dpi" style="width:5em">
+        <input type="text" name="sensitivity" placeholder="sens" style="width:4em">
+        <input type="text" name="mouse_brand" placeholder="brand" style="width:7em">
+        <input type="text" name="mouse_model" placeholder="model" style="width:9em">
+        <button type="submit">Save</button>
+      </form>
+      <form class="inline" method="post" action="{{ url_for('actions.dismiss', message_id=row.id) }}">
+        <button type="submit">Dismiss</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="muted">none pending</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Twitch handle problems</h1>
+
+<h2>Channels failing to join <span class="muted">(likely renamed or suspended)</span></h2>
+<table>
+  <tr><th>Handle</th><th>Player</th><th>Other socials</th><th>Last checked</th><th>Fix</th></tr>
+  {% for row in failing %}
+  <tr>
+    <td class="warn">{{ row.handle }}</td>
+    <td><a href="https://liquipedia.net/marvelrivals/{{ row.liquipedia_page | replace(' ', '_') }}">{{ row.liquipedia_page }}</a>
+        <span class="muted">{{ row.real_name or '' }}</span></td>
+    <td class="muted">{{ row.other_socials or '—' }}</td>
+    <td class="muted">{{ row.last_checked_at }}</td>
+    <td>
+      <form class="inline" method="post" action="{{ url_for('actions.replace_handle') }}">
+        <input type="hidden" name="player_id" value="{{ row.player_id }}">
+        <input type="hidden" name="old_account_id" value="{{ row.account_id }}">
+        <input type="text" name="new_handle" placeholder="correct handle" required>
+        <button type="submit">Replace</button>
+      </form>
+      <form class="inline" method="post" action="{{ url_for('actions.retire_handle') }}">
+        <input type="hidden" name="account_id" value="{{ row.account_id }}">
+        <button type="submit">Retire only</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="muted">none — all joined channels confirmed</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Players without a twitch handle</h2>
+<table>
+  <tr><th>Player</th><th>Country</th><th>Other socials</th><th>Add handle</th></tr>
+  {% for row in missing %}
+  <tr>
+    <td><a href="https://liquipedia.net/marvelrivals/{{ row.liquipedia_page | replace(' ', '_') }}">{{ row.liquipedia_page }}</a>
+        <span class="muted">{{ row.real_name or '' }}</span></td>
+    <td>{{ row.country or '' }}</td>
+    <td class="muted">{{ row.other_socials or '—' }}</td>
+    <td>
+      <form class="inline" method="post" action="{{ url_for('actions.replace_handle') }}">
+        <input type="hidden" name="player_id" value="{{ row.player_id }}">
+        <input type="text" name="new_handle" placeholder="twitch handle" required>
+        <button type="submit">Add</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4" class="muted">none — every resolved player has a handle</td></tr>
+  {% endfor %}
+</table>
+<p class="muted">Fixes append a new social account row and retire the old one —
+history is never overwritten. After fixing handles, restart the collector:
+<code>systemctl --user restart mr-mouse-stats-collect</code></p>
+{% endblock %}

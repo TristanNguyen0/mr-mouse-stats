@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Overview</h1>
+<div class="cards">
+  <div class="card"><b>{{ counts.players }}</b> players ({{ counts.resolved }} resolved)</div>
+  <div class="card"><b>{{ counts.active_twitch }}</b> active twitch handles</div>
+  <div class="card {% if counts.failing_channels %}warn{% endif %}">
+    <b>{{ counts.failing_channels }}</b> channels failing to join</div>
+  <div class="card {% if counts.players_without_twitch %}warn{% endif %}">
+    <b>{{ counts.players_without_twitch }}</b> players without twitch</div>
+  <div class="card {% if counts.unresolved %}warn{% endif %}">
+    <b>{{ counts.unresolved }}</b> unresolved players</div>
+  <div class="card"><b>{{ counts.candidates }}</b> unparsed candidates</div>
+</div>
+
+<h2>Settings observations</h2>
+<table>
+  <tr><th>Source</th><th>Rows</th></tr>
+  {% for row in observations %}
+    <tr><td>{{ row.source }}</td><td>{{ row.n }}</td></tr>
+  {% else %}
+    <tr><td colspan="2" class="muted">none yet</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Captured twitch messages</h2>
+<table>
+  <tr><th>Kind</th><th>Rows</th></tr>
+  {% for row in messages %}
+    <tr><td>{{ row.kind }}</td><td>{{ row.n }}</td></tr>
+  {% else %}
+    <tr><td colspan="2" class="muted">none yet — the collector is listening</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

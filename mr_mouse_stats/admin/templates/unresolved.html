@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Unresolved players</h1>
+<p class="muted">Roster names whose Liquipedia page was missing or wasn't a
+player page. Fix the page name on Liquipedia's side or re-run fetch-roster
+after the wiki is corrected.</p>
+<table>
+  <tr><th>Page</th><th>Status</th><th>Team</th><th>First seen</th></tr>
+  {% for p in players %}
+  <tr>
+    <td><a href="https://liquipedia.net/marvelrivals/{{ p.liquipedia_page | replace(' ', '_') }}">{{ p.liquipedia_page }}</a></td>
+    <td class="warn">{{ p.resolution_status }}</td>
+    <td>{{ p.team_name or '' }}</td>
+    <td class="muted">{{ p.first_seen_at }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4" class="muted">none — every fetched player resolved</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

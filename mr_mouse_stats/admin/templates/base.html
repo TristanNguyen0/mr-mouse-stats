@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>mr-mouse-stats admin</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 70rem;
+           padding: 0 1rem; color: #1a1a1a; }
+    nav a { margin-right: 1.2rem; text-decoration: none; color: #0b62c4; }
+    nav a.active { font-weight: 700; color: #1a1a1a; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid #ddd;
+             vertical-align: top; }
+    th { background: #f5f5f5; }
+    .muted { color: #777; font-size: .9em; }
+    .warn { color: #b3261e; }
+    .pill { background: #eef; border-radius: 8px; padding: .1rem .5rem; }
+    .cards { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem 1.4rem; }
+    .card b { font-size: 1.6em; display: block; }
+    form.inline { display: inline; }
+    input[type=text], input[type=number] { padding: .25rem .4rem; }
+    .flash { background: #e6f4e6; border: 1px solid #9c9; padding: .6rem 1rem;
+             border-radius: 6px; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Overview</a>
+    <a href="{{ url_for('handles') }}" {% if request.endpoint == 'handles' %}class="active"{% endif %}>Handles</a>
+    <a href="{{ url_for('unresolved') }}" {% if request.endpoint == 'unresolved' %}class="active"{% endif %}>Unresolved</a>
+    <a href="{{ url_for('candidates') }}" {% if request.endpoint == 'candidates' %}class="active"{% endif %}>Candidates</a>
+  </nav>
+  {% with msgs = get_flashed_messages() %}
+    {% for m in msgs %}<div class="flash">{{ m }}</div>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</body>
+</html>

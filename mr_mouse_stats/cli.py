@@ -344,6 +344,18 @@ def cmd_parse_observations(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_admin(args: argparse.Namespace) -> int:
+    from .admin.app import create_app
+
+    app = create_app(str(args.db))
+    logger.info(
+        "admin dashboard starting",
+        extra={"fields": {"url": f"http://{args.host}:{args.port}/"}},
+    )
+    app.run(host=args.host, port=args.port, debug=False)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="mr-mouse-stats")
     parser.add_argument("--log-level", default="INFO")
@@ -396,6 +408,14 @@ def main(argv: list[str] | None = None) -> int:
     parse.add_argument("--dry-run", action="store_true",
                        help="show what would be parsed without writing")
     parse.set_defaults(func=cmd_parse_observations)
+
+    admin = sub.add_parser(
+        "admin", help="run the localhost admin dashboard (no auth — do not expose)"
+    )
+    admin.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
+    admin.add_argument("--host", default="127.0.0.1")
+    admin.add_argument("--port", type=int, default=8177)
+    admin.set_defaults(func=cmd_admin)
 
     args = parser.parse_args(argv)
     log.setup(args.log_level)

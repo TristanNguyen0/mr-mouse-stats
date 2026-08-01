@@ -54,6 +54,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
         # append-only handle correction: old handle rows get retired_at
         # stamped once; corrected handles are appended as new rows
         conn.execute("ALTER TABLE social_accounts ADD COLUMN retired_at TEXT")
+    message_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(twitch_messages)")
+    }
+    if "dismissed_at" not in message_columns:
+        # admin-dismissed candidates (non-settings chatter); row is kept
+        conn.execute("ALTER TABLE twitch_messages ADD COLUMN dismissed_at TEXT")
 
 
 class Store:
@@ -263,6 +269,7 @@ class Store:
             """
             SELECT * FROM twitch_messages tm
             WHERE tm.kind IN ('bot_response', 'broadcaster_response')
+              AND tm.dismissed_at IS NULL
               AND NOT EXISTS (
                   SELECT 1 FROM settings_observations so
                   WHERE so.source_message_id = tm.id
@@ -298,6 +305,13 @@ class Store:
                 last_checked_at = excluded.last_checked_at
             """,
             (channel.lower(), int(confirmed), checked_at),
+        )
+
+    def dismiss_twitch_message(self, message_id: int, dismissed_at: str) -> None:
+        self.conn.execute(
+            "UPDATE twitch_messages SET dismissed_at = ? "
+            "WHERE id = ? AND dismissed_at IS NULL",
+            (dismissed_at, message_id),
         )
 
     def resolved_players(self) -> list[sqlite3.Row]:
