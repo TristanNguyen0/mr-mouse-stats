@@ -2,9 +2,9 @@
 
 Mouse settings (DPI, in-game sensitivity, mouse model) for professional Marvel
 Rivals players competing in the Ignite circuit — including **settings history
-over time**, not just a snapshot.
+over time**.
 
-Milestone 1: a CLI that, given a Liquipedia tournament page, stores the roster
+CLI that, given a Liquipedia tournament page, stores the roster
 of players with their Twitch (and other social) handles.
 
 ```sh
@@ -35,8 +35,6 @@ uv run pytest
 ```
 
 ## Data collection constraints
-
-Read these before touching any code that performs network access.
 
 **Liquipedia** — use the MediaWiki API at `liquipedia.net/marvelrivals/api.php`
 only; automated access to rendered HTML pages is forbidden by their ToS. Rate
