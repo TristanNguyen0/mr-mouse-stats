@@ -1,14 +1,4 @@
-import pytest
-
-from mr_mouse_stats import db
 from mr_mouse_stats.twitch.runner import collect
-
-
-@pytest.fixture
-def store():
-    conn = db.connect(":memory:")
-    yield db.Store(conn)
-    conn.close()
 
 
 class QuietClient:
@@ -32,7 +22,7 @@ def test_collect_persists_join_status(store):
         r["channel"]: r["confirmed"]
         for r in store.conn.execute("SELECT * FROM channel_join_status")
     }
-    assert rows == {"alpha": 1, "beta": 1, "gone": 0}
+    assert rows == {"alpha": True, "beta": True, "gone": False}
 
 
 def test_join_status_upsert_updates_on_recheck(store):
@@ -40,7 +30,7 @@ def test_join_status_upsert_updates_on_recheck(store):
     store.upsert_channel_join_status("GONE", True, "t1")  # handle fixed
     rows = store.conn.execute("SELECT * FROM channel_join_status").fetchall()
     assert len(rows) == 1
-    assert rows[0]["confirmed"] == 1
+    assert rows[0]["confirmed"] is True
     assert rows[0]["last_checked_at"] == "t1"
 
 
@@ -71,22 +61,3 @@ def test_retire_does_not_overwrite_existing_retirement(store):
     store.retire_social_account(account_id, "t9")
     row = store.conn.execute("SELECT retired_at FROM social_accounts").fetchone()
     assert row["retired_at"] == "t1"
-
-
-def test_migration_adds_retired_at_to_old_db(tmp_path):
-    import sqlite3
-
-    path = tmp_path / "old.sqlite3"
-    old = sqlite3.connect(path)
-    old.execute(
-        "CREATE TABLE social_accounts ("
-        "id INTEGER PRIMARY KEY, player_id INTEGER NOT NULL, "
-        "platform TEXT NOT NULL, handle TEXT NOT NULL, url TEXT, "
-        "source TEXT NOT NULL DEFAULT 'liquipedia', observed_at TEXT NOT NULL)"
-    )
-    old.commit()
-    old.close()
-    conn = db.connect(path)
-    columns = {r[1] for r in conn.execute("PRAGMA table_info(social_accounts)")}
-    assert "retired_at" in columns
-    conn.close()

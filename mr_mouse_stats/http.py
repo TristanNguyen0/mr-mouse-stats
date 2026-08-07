@@ -19,6 +19,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Callable
 
+from . import config
+
 logger = logging.getLogger(__name__)
 
 USER_AGENT = (
@@ -48,14 +50,17 @@ def _default_transport(url: str) -> bytes:
 class LiquipediaClient:
     def __init__(
         self,
-        wiki: str = "marvelrivals",
-        cache_dir: Path | str = ".cache/liquipedia",
+        wiki: str | None = None,
+        cache_dir: Path | str | None = None,
         cache_ttl: float = DEFAULT_CACHE_TTL,
         refresh: bool = False,
         transport: Callable[[str], bytes] = _default_transport,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
+        # Read the environment lazily rather than freezing it at import time.
+        wiki = wiki or config.wiki()
+        cache_dir = config.cache_dir() if cache_dir is None else cache_dir
         self.api_url = f"https://liquipedia.net/{wiki}/api.php"
         self.cache_dir = Path(cache_dir) / wiki
         self.cache_ttl = cache_ttl

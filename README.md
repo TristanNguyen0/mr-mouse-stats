@@ -8,6 +8,9 @@ CLI that, given a Liquipedia tournament page, stores the roster
 of players with their Twitch (and other social) handles.
 
 ```sh
+# Apply schema migrations (deploy step; safe to re-run)
+uv run mr-mouse-stats migrate
+
 # Stage 1: roster + twitch handles from Liquipedia
 uv run mr-mouse-stats fetch-roster "MR_Ignite/2026/Mid_Season_Finals" --dry-run
 uv run mr-mouse-stats fetch-roster "MR_Ignite/2026/Mid_Season_Finals"
@@ -38,12 +41,51 @@ After collection has accrued, refresh derived data and the site with
 `parse-observations` + `build-site`; `site/` is self-contained and can be
 served by any static host.
 
+## Configuration
+
+Everything is read from the environment, with local-development defaults:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MR_MOUSE_STATS_DB` | `postgresql://postgres:postgres@localhost:55432/mr_mouse_stats` | Postgres DSN |
+| `MR_MOUSE_STATS_CACHE_DIR` | `.cache/liquipedia` | on-disk API response cache |
+| `MR_MOUSE_STATS_WIKI` | `marvelrivals` | Liquipedia wiki |
+
+Every CLI subcommand also takes `--db` / `--cache-dir` / `--wiki` to override.
+
 ## Development
 
+Storage is Postgres. Bring up a local one, then migrate:
+
 ```sh
+docker run -d --name mr-mouse-pg \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=mr_mouse_stats \
+  -p 55432:5432 postgres:16
+
 uv sync
+uv run mr-mouse-stats migrate
+```
+
+Tests need a **separate** database — the fixtures `TRUNCATE` every table
+between tests, and refuse to run against a database whose name doesn't end
+in `_test`:
+
+```sh
+docker exec mr-mouse-pg psql -U postgres -c "CREATE DATABASE mr_mouse_stats_test"
 uv run pytest
 ```
+
+Override with `MR_MOUSE_STATS_TEST_DSN` if your Postgres lives elsewhere.
+
+### Importing the old SQLite database
+
+```sh
+uv run python scripts/import_from_sqlite.py --sqlite data/mr_mouse_stats.sqlite3
+```
+
+Primary keys are preserved (`settings_observations.source_message_id` and
+`twitch_messages.trigger_id` depend on them) and identity sequences are
+advanced past the imported maximum. Pass `--truncate` to replace existing rows.
 
 ## Data collection constraints
 

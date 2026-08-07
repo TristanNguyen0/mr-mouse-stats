@@ -7,7 +7,7 @@ import logging
 import sys
 from pathlib import Path
 
-from . import db, log
+from . import config, db, log
 from .http import LiquipediaClient
 from .liquipedia import api
 from .liquipedia.player import parse_player
@@ -87,7 +87,7 @@ def cmd_fetch_roster(args: argparse.Namespace) -> int:
 
 
 def _persist(
-    db_path: Path,
+    db_path: str,
     page_name: str,
     meta,
     teams: list[TeamEntry],
@@ -354,6 +354,18 @@ def cmd_build_site(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_migrate(args: argparse.Namespace) -> int:
+    conn = db.connect(args.db)
+    applied = db.apply_migrations(conn)
+    conn.close()
+    print(
+        "applied: " + ", ".join(applied)
+        if applied
+        else "database already up to date"
+    )
+    return 0
+
+
 def cmd_admin(args: argparse.Namespace) -> int:
     from .admin.app import create_app
 
@@ -366,6 +378,33 @@ def cmd_admin(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_db_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--db",
+        default=config.db(),
+        help=f"postgres DSN (env {config.ENV_DB})",
+    )
+
+
+def _add_liquipedia_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--wiki",
+        default=config.wiki(),
+        help=f"liquipedia wiki (env {config.ENV_WIKI})",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=Path(config.cache_dir()),
+        help=f"on-disk API response cache (env {config.ENV_CACHE_DIR})",
+    )
+    parser.add_argument(
+        "--refresh-cache",
+        action="store_true",
+        help="ignore cached API responses (still rate-limited)",
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="mr-mouse-stats")
     parser.add_argument("--log-level", default="INFO")
@@ -376,11 +415,8 @@ def main(argv: list[str] | None = None) -> int:
         help="fetch a tournament's roster + player socials from Liquipedia",
     )
     fetch.add_argument("page", help='tournament page, e.g. "MR_Ignite/2026/Mid_Season_Finals"')
-    fetch.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
-    fetch.add_argument("--wiki", default="marvelrivals")
-    fetch.add_argument("--cache-dir", type=Path, default=Path(".cache/liquipedia"))
-    fetch.add_argument("--refresh-cache", action="store_true",
-                       help="ignore cached API responses (still rate-limited)")
+    _add_db_arg(fetch)
+    _add_liquipedia_args(fetch)
     fetch.add_argument("--dry-run", action="store_true",
                        help="fetch and parse but write nothing to the database")
     fetch.set_defaults(func=cmd_fetch_roster)
@@ -389,10 +425,8 @@ def main(argv: list[str] | None = None) -> int:
         "ingest-liquipedia-settings",
         help="parse {{Mouse settings table}} from resolved players' pages",
     )
-    ingest.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
-    ingest.add_argument("--wiki", default="marvelrivals")
-    ingest.add_argument("--cache-dir", type=Path, default=Path(".cache/liquipedia"))
-    ingest.add_argument("--refresh-cache", action="store_true")
+    _add_db_arg(ingest)
+    _add_liquipedia_args(ingest)
     ingest.add_argument("--dry-run", action="store_true")
     ingest.set_defaults(func=cmd_ingest_liquipedia_settings)
 
@@ -400,7 +434,7 @@ def main(argv: list[str] | None = None) -> int:
         "collect-twitch",
         help="passively observe settings-bot responses in players' Twitch chats",
     )
-    twitch.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
+    _add_db_arg(twitch)
     twitch.add_argument("--duration", type=float, default=0.0,
                         help="stop after N seconds (default: run until Ctrl-C)")
     twitch.add_argument("--channels",
@@ -414,7 +448,7 @@ def main(argv: list[str] | None = None) -> int:
         "parse-observations",
         help="derive settings_observations from stored raw twitch messages",
     )
-    parse.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
+    _add_db_arg(parse)
     parse.add_argument("--dry-run", action="store_true",
                        help="show what would be parsed without writing")
     parse.set_defaults(func=cmd_parse_observations)
@@ -422,15 +456,21 @@ def main(argv: list[str] | None = None) -> int:
     build = sub.add_parser(
         "build-site", help="render the public stats site as static HTML"
     )
-    build.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
+    _add_db_arg(build)
     build.add_argument("--out", type=Path, default=Path("site"),
                        help="output directory (default: site/)")
     build.set_defaults(func=cmd_build_site)
 
+    migrate = sub.add_parser(
+        "migrate", help="apply pending schema migrations (deploy step)"
+    )
+    _add_db_arg(migrate)
+    migrate.set_defaults(func=cmd_migrate)
+
     admin = sub.add_parser(
         "admin", help="run the localhost admin dashboard (no auth — do not expose)"
     )
-    admin.add_argument("--db", type=Path, default=Path("data/mr_mouse_stats.sqlite3"))
+    _add_db_arg(admin)
     admin.add_argument("--host", default="127.0.0.1")
     admin.add_argument("--port", type=int, default=8177)
     admin.set_defaults(func=cmd_admin)

@@ -41,13 +41,12 @@ SCRIPT = [
 
 
 @pytest.fixture
-def store():
-    conn = db.connect(":memory:")
+def store(conn):
     store = db.Store(conn)
     pid = store.upsert_player_stub("Shpeediry", "resolved", "t0")
     store.record_social_account(pid, "twitch", "Shpeediry", None, "t0")
-    yield store
-    conn.close()
+    store.commit()
+    return store
 
 
 def test_collect_persists_triggers_and_responses(store):
@@ -83,20 +82,13 @@ def test_collect_duration_cutoff(store):
     assert stats["messages_seen"] == 0  # cut off before first message processed
 
 
-def test_parse_observations_end_to_end(store, tmp_path, capsys):
-    collect(FakeClient(SCRIPT), store)
-    # persist to a file so the CLI can open it
-    path = tmp_path / "t.sqlite3"
-    disk = db.connect(path)
-    store.conn.backup(disk)
-    disk.commit()
-    disk.close()
-
-    assert cli.main(["parse-observations", "--db", str(path)]) == 0
+def test_parse_observations_end_to_end(store, dsn, capsys):
+    collect(FakeClient(SCRIPT), store)  # commits per message
+    assert cli.main(["parse-observations", "--db", dsn]) == 0
     out = capsys.readouterr().out
     assert "2 observations parsed" in out  # bot + broadcaster responses
 
-    conn = db.connect(path)
+    conn = db.connect(dsn)
     rows = conn.execute(
         "SELECT * FROM settings_observations ORDER BY id"
     ).fetchall()
@@ -109,24 +101,22 @@ def test_parse_observations_end_to_end(store, tmp_path, capsys):
     assert rows[0]["source_message_id"] is not None
     assert rows[1]["dpi"] == 1600  # broadcaster's own answer
 
+    conn.close()
+
     # re-run: nothing new (raw messages already derived)
-    assert cli.main(["parse-observations", "--db", str(path)]) == 0
+    assert cli.main(["parse-observations", "--db", dsn]) == 0
     assert "0 observations parsed" in capsys.readouterr().out
-    conn2 = db.connect(path)
+    conn2 = db.connect(dsn)
     count = conn2.execute("SELECT COUNT(*) c FROM settings_observations").fetchone()["c"]
     assert count == 2
+    conn2.close()
 
 
-def test_parse_observations_dry_run(store, tmp_path, capsys):
+def test_parse_observations_dry_run(store, dsn, capsys):
     collect(FakeClient(SCRIPT), store)
-    path = tmp_path / "t.sqlite3"
-    disk = db.connect(path)
-    store.conn.backup(disk)
-    disk.commit()
-    disk.close()
-
-    assert cli.main(["parse-observations", "--db", str(path), "--dry-run"]) == 0
+    assert cli.main(["parse-observations", "--db", dsn, "--dry-run"]) == 0
     assert "dry run" in capsys.readouterr().out
-    conn = db.connect(path)
+    conn = db.connect(dsn)
     count = conn.execute("SELECT COUNT(*) c FROM settings_observations").fetchone()["c"]
     assert count == 0
+    conn.close()

@@ -1,6 +1,6 @@
+import psycopg
 import pytest
 
-from mr_mouse_stats import db
 from mr_mouse_stats.models import PlayerInfo, TournamentMeta
 
 META = TournamentMeta(
@@ -10,13 +10,6 @@ META = TournamentMeta(
     start_date="2026-07-29",
     end_date="2026-08-01",
 )
-
-
-@pytest.fixture
-def store():
-    conn = db.connect(":memory:")
-    yield db.Store(conn)
-    conn.close()
 
 
 def test_tournament_upsert_is_idempotent(store):
@@ -36,7 +29,7 @@ def test_roster_entry_upsert_no_duplicates(store):
     store.upsert_roster_entry(tid, team, player, "dps", True, False, None, "Main")
     rows = store.conn.execute("SELECT * FROM roster_entries").fetchall()
     assert len(rows) == 1
-    assert rows[0]["is_sub"] == 1  # second write updated in place
+    assert rows[0]["is_sub"] is True  # second write updated in place
 
 
 def test_player_stub_then_resolution(store):
@@ -101,7 +94,5 @@ def test_settings_observation_rejects_unknown_field(store):
 
 
 def test_foreign_keys_enforced(store):
-    import sqlite3
-
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(psycopg.errors.ForeignKeyViolation):
         store.record_social_account(999, "twitch", "ghost", None, "t0")

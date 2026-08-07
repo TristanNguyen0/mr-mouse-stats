@@ -16,6 +16,10 @@ Wants=network-online.target
 [Service]
 # Adjust both paths if the repo or uv live elsewhere (%h = home directory).
 WorkingDirectory=%h/dev/mr-mouse-stats
+# Postgres DSN. Point this at Neon once the database moves off this box.
+# Prefer an EnvironmentFile if the DSN carries a real password.
+Environment=MR_MOUSE_STATS_DB=postgresql://postgres:postgres@localhost:55432/mr_mouse_stats
+Environment=TZ=UTC
 ExecStart=%h/.local/bin/uv run mr-mouse-stats collect-twitch
 # The IRC client reconnects internally with backoff; this only covers crashes.
 Restart=on-failure

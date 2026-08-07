@@ -1,15 +1,3 @@
-import pytest
-
-from mr_mouse_stats import db
-
-
-@pytest.fixture
-def store():
-    conn = db.connect(":memory:")
-    yield db.Store(conn)
-    conn.close()
-
-
 def record(store, msg_id="uuid-1", kind="trigger", trigger_id=None, text="!dpi"):
     return store.record_twitch_message(
         msg_id=msg_id, observed_at="2026-08-01T02:00:00+00:00",
@@ -38,7 +26,7 @@ def test_response_links_to_trigger(store):
         trigger_id=trigger_id, text="800 dpi 6 sens",
     )
     row = store.conn.execute(
-        "SELECT trigger_id FROM twitch_messages WHERE id = ?", (response_id,)
+        "SELECT trigger_id FROM twitch_messages WHERE id = %s", (response_id,)
     ).fetchone()
     assert row["trigger_id"] == trigger_id
 
@@ -63,22 +51,3 @@ def test_player_ids_by_twitch_channel(store):
     store.record_social_account(pid, "twitch", "Veswa", None, "t0")
     store.record_social_account(pid, "twitter", "veswa_tw", None, "t0")
     assert store.player_ids_by_twitch_channel() == {"veswa": pid}
-
-
-def test_migration_adds_source_message_id_to_old_db(tmp_path):
-    import sqlite3
-
-    path = tmp_path / "old.sqlite3"
-    old = sqlite3.connect(path)
-    # simulate a stage-1 database: settings_observations without the column
-    old.execute(
-        "CREATE TABLE settings_observations ("
-        "id INTEGER PRIMARY KEY, player_id INTEGER NOT NULL, "
-        "observed_at TEXT NOT NULL, source TEXT NOT NULL)"
-    )
-    old.commit()
-    old.close()
-    conn = db.connect(path)
-    columns = {r[1] for r in conn.execute("PRAGMA table_info(settings_observations)")}
-    assert "source_message_id" in columns
-    conn.close()

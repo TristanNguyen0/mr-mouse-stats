@@ -50,7 +50,7 @@ def retire_handle():
 def manual_observation(message_id: int):
     store = _store()
     row = store.conn.execute(
-        "SELECT * FROM twitch_messages WHERE id = ?", (message_id,)
+        "SELECT * FROM twitch_messages WHERE id = %s", (message_id,)
     ).fetchone()
     if row is None:
         flash("unknown message")

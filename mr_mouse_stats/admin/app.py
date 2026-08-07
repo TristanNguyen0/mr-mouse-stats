@@ -4,21 +4,20 @@ append-only manual fixes. No auth — bind to localhost only."""
 from __future__ import annotations
 
 import os
-import sqlite3
 
 from flask import Flask, g, render_template
 
 from .. import db
 
 
-def create_app(db_path: str) -> Flask:
+def create_app(dsn: str) -> Flask:
     app = Flask(__name__)
-    app.config["DB_PATH"] = db_path
+    app.config["DSN"] = dsn
     app.secret_key = os.urandom(16)  # only used for flash messages
 
-    def conn() -> sqlite3.Connection:
+    def conn() -> db.Connection:
         if "conn" not in g:
-            g.conn = db.connect(app.config["DB_PATH"])
+            g.conn = db.connect(app.config["DSN"])
         return g.conn
 
     app.get_conn = conn  # used by the action blueprint
@@ -42,7 +41,7 @@ def create_app(db_path: str) -> Flask:
                 "WHERE platform = 'twitch' AND retired_at IS NULL"
             ).fetchone()["n"],
             "failing_channels": c.execute(
-                "SELECT COUNT(*) n FROM channel_join_status WHERE confirmed = 0"
+                "SELECT COUNT(*) n FROM channel_join_status WHERE NOT confirmed"
             ).fetchone()["n"],
             "players_without_twitch": len(_players_without_twitch(c)),
             "unresolved": len(_unresolved_players(c)),
@@ -81,13 +80,14 @@ def create_app(db_path: str) -> Flask:
     return app
 
 
-def _failing_channels(c: sqlite3.Connection) -> list[sqlite3.Row]:
+def _failing_channels(c: db.Connection) -> list[db.Row]:
     return c.execute(
         """
         SELECT cjs.channel, cjs.last_checked_at,
                sa.id AS account_id, sa.handle,
                p.id AS player_id, p.liquipedia_page, p.real_name,
-               (SELECT GROUP_CONCAT(platform || ':' || handle, '  ')
+               (SELECT string_agg(platform || ':' || handle, '  '
+                                  ORDER BY platform, handle)
                 FROM social_accounts o
                 WHERE o.player_id = p.id AND o.platform != 'twitch'
                   AND o.retired_at IS NULL) AS other_socials
@@ -96,18 +96,19 @@ def _failing_channels(c: sqlite3.Connection) -> list[sqlite3.Row]:
           ON LOWER(sa.handle) = cjs.channel
          AND sa.platform = 'twitch' AND sa.retired_at IS NULL
         JOIN players p ON p.id = sa.player_id
-        WHERE cjs.confirmed = 0
+        WHERE NOT cjs.confirmed
         ORDER BY cjs.channel
         """
     ).fetchall()
 
 
-def _players_without_twitch(c: sqlite3.Connection) -> list[sqlite3.Row]:
+def _players_without_twitch(c: db.Connection) -> list[db.Row]:
     return c.execute(
         """
         SELECT p.id AS player_id, p.liquipedia_page, p.player_id AS handle_name,
                p.real_name, p.country,
-               (SELECT GROUP_CONCAT(platform || ':' || handle, '  ')
+               (SELECT string_agg(platform || ':' || handle, '  '
+                                  ORDER BY platform, handle)
                 FROM social_accounts o
                 WHERE o.player_id = p.id AND o.retired_at IS NULL) AS other_socials
         FROM players p
@@ -122,7 +123,7 @@ def _players_without_twitch(c: sqlite3.Connection) -> list[sqlite3.Row]:
     ).fetchall()
 
 
-def _unresolved_players(c: sqlite3.Connection) -> list[sqlite3.Row]:
+def _unresolved_players(c: db.Connection) -> list[db.Row]:
     return c.execute(
         """
         SELECT p.*, t.name AS team_name
@@ -135,7 +136,7 @@ def _unresolved_players(c: sqlite3.Connection) -> list[sqlite3.Row]:
     ).fetchall()
 
 
-def _unparsed_candidates(c: sqlite3.Connection) -> list[sqlite3.Row]:
+def _unparsed_candidates(c: db.Connection) -> list[db.Row]:
     return c.execute(
         """
         SELECT tm.*, trig.text AS trigger_text, trig.login AS trigger_login

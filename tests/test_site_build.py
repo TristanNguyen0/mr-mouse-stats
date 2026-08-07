@@ -7,9 +7,7 @@ from mr_mouse_stats.site.svg import bar_chart
 
 
 @pytest.fixture
-def site_db(tmp_path):
-    path = tmp_path / "site.sqlite3"
-    conn = db.connect(path)
+def site_db(conn):
     store = db.Store(conn)
     tid = store.upsert_tournament(
         "T", TournamentMeta("Test Cup", None, None, None, None), "t0"
@@ -17,7 +15,7 @@ def site_db(tmp_path):
     team = store.get_or_create_team("Testers")
     covered = store.upsert_player_stub("Team/Alpha <X>", "resolved", "t0")
     conn.execute(
-        "UPDATE players SET player_id = 'Alpha', roles = 'Duelist' WHERE id = ?",
+        "UPDATE players SET player_id = 'Alpha', roles = 'Duelist' WHERE id = %s",
         (covered,),
     )
     store.upsert_roster_entry(tid, team, covered, "dps", False, False, None, "Main")
@@ -29,8 +27,7 @@ def site_db(tmp_path):
         mouse_brand="Razer", mouse_model="Viper V3",
     )
     store.commit()
-    yield conn
-    conn.close()
+    return conn
 
 
 def test_build_site_writes_expected_pages(site_db, tmp_path):

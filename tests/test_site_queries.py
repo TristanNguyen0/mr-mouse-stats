@@ -6,8 +6,8 @@ from mr_mouse_stats.site import queries
 
 
 @pytest.fixture
-def conn(tmp_path):
-    connection = db.connect(tmp_path / "site.sqlite3")
+def conn(conn):  # overrides the empty connection from conftest with a seeded one
+    connection = conn
     store = db.Store(connection)
 
     tid = store.upsert_tournament(
@@ -18,8 +18,8 @@ def conn(tmp_path):
     def player(page, roles, role):
         pid = store.upsert_player_stub(page, "resolved", "t0")
         connection.execute(
-            "UPDATE players SET player_id = ?, roles = ?, country = 'Sweden' "
-            "WHERE id = ?",
+            "UPDATE players SET player_id = %s, roles = %s, country = 'Sweden' "
+            "WHERE id = %s",
             (page.rsplit("/", 1)[-1], roles, pid),
         )
         store.upsert_roster_entry(tid, team, pid, role, False, False, None, "Main")
@@ -52,8 +52,7 @@ def conn(tmp_path):
         raw_text="800", dpi=800,
     )
     store.commit()
-    yield connection
-    connection.close()
+    return connection
 
 
 def test_summaries_cover_all_resolved_players(conn):

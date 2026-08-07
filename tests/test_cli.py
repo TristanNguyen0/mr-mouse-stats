@@ -1,6 +1,5 @@
 """End-to-end CLI test against fixtures — no network, no live API."""
 
-import sqlite3
 from pathlib import Path
 
 import pytest
@@ -44,26 +43,21 @@ def stub_api(monkeypatch):
     monkeypatch.setattr(cli.api, "fetch_pages", fetch_pages)
 
 
-def run(tmp_path, *extra):
-    db_path = tmp_path / "test.sqlite3"
-    code = cli.main(["fetch-roster", PAGE, "--db", str(db_path), *extra])
-    return code, db_path
+def run(dsn, *extra):
+    return cli.main(["fetch-roster", PAGE, "--db", dsn, *extra])
 
 
-def test_dry_run_writes_nothing(stub_api, tmp_path, capsys):
-    code, db_path = run(tmp_path, "--dry-run")
-    assert code == 0
-    assert not db_path.exists()
+def test_dry_run_writes_nothing(stub_api, conn, dsn, capsys):
+    assert run(dsn, "--dry-run") == 0
+    for table in ("teams", "players", "roster_entries", "social_accounts"):
+        assert conn.execute(f"SELECT COUNT(*) c FROM {table}").fetchone()["c"] == 0
     out = capsys.readouterr().out
     assert "Marvel Rivals Ignite 2026: Mid Season Finals" in out
     assert "dry run" in out
 
 
-def test_persists_roster_and_socials(stub_api, tmp_path, capsys):
-    code, db_path = run(tmp_path)
-    assert code == 0
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+def test_persists_roster_and_socials(stub_api, conn, dsn, capsys):
+    assert run(dsn) == 0
 
     assert conn.execute("SELECT COUNT(*) c FROM teams").fetchone()["c"] == 10
     n_roster = conn.execute("SELECT COUNT(*) c FROM roster_entries").fetchone()["c"]
@@ -101,19 +95,16 @@ def test_persists_roster_and_socials(stub_api, tmp_path, capsys):
     assert missing > 0  # every non-fixture player is missing in the stub
 
 
-def test_rerun_is_idempotent(stub_api, tmp_path):
-    code1, db_path = run(tmp_path)
-    conn = sqlite3.connect(db_path)
-    counts1 = {
-        t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-        for t in ("teams", "players", "roster_entries", "social_accounts")
-    }
-    conn.close()
-    code2, _ = run(tmp_path)
-    assert code1 == code2 == 0
-    conn = sqlite3.connect(db_path)
-    counts2 = {
-        t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-        for t in ("teams", "players", "roster_entries", "social_accounts")
-    }
-    assert counts1 == counts2
+def test_rerun_is_idempotent(stub_api, conn, dsn):
+    tables = ("teams", "players", "roster_entries", "social_accounts")
+
+    def counts():
+        return {
+            t: conn.execute(f"SELECT COUNT(*) c FROM {t}").fetchone()["c"]
+            for t in tables
+        }
+
+    assert run(dsn) == 0
+    before = counts()
+    assert run(dsn) == 0
+    assert counts() == before

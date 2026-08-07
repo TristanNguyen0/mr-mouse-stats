@@ -63,16 +63,12 @@ def test_garbage_numbers_become_none():
 
 
 class TestIngestCommand:
-    def seed_db(self, tmp_path):
-        path = tmp_path / "t.sqlite3"
-        conn = db.connect(path)
+    def seed_db(self, conn):
         store = db.Store(conn)
         for page in ("Shpeediry", "Nero", "Energy"):
             store.upsert_player_stub(page, "resolved", "t0")
         store.upsert_player_stub("Ghost", "not_player_page", "t0")
         store.commit()
-        conn.close()
-        return path
 
     def stub_pages(self, monkeypatch):
         def fetch_pages(client, titles, chunk_size=50):
@@ -84,13 +80,12 @@ class TestIngestCommand:
 
         monkeypatch.setattr(cli.api, "fetch_pages", fetch_pages)
 
-    def test_ingest_and_idempotence(self, tmp_path, monkeypatch, capsys):
-        path = self.seed_db(tmp_path)
+    def test_ingest_and_idempotence(self, conn, dsn, monkeypatch, capsys):
+        self.seed_db(conn)
         self.stub_pages(monkeypatch)
-        assert cli.main(["ingest-liquipedia-settings", "--db", str(path)]) == 0
+        assert cli.main(["ingest-liquipedia-settings", "--db", dsn]) == 0
         assert "2 settings observations added" in capsys.readouterr().out
 
-        conn = db.connect(path)
         rows = conn.execute(
             "SELECT * FROM settings_observations ORDER BY observed_at"
         ).fetchall()
@@ -101,16 +96,14 @@ class TestIngestCommand:
         assert nero["zoom_sens"] == 30.0
         assert nero["pad_model"] == "G640"
         assert shpeediry["ref_url"] == "https://nightbot.tv/t/speedily_/commands"
-        conn.close()
 
-        assert cli.main(["ingest-liquipedia-settings", "--db", str(path)]) == 0
+        assert cli.main(["ingest-liquipedia-settings", "--db", dsn]) == 0
         assert "0 settings observations added, 2 already present" in capsys.readouterr().out
 
-    def test_ingest_dry_run(self, tmp_path, monkeypatch, capsys):
-        path = self.seed_db(tmp_path)
+    def test_ingest_dry_run(self, conn, dsn, monkeypatch, capsys):
+        self.seed_db(conn)
         self.stub_pages(monkeypatch)
-        assert cli.main(["ingest-liquipedia-settings", "--db", str(path), "--dry-run"]) == 0
+        assert cli.main(["ingest-liquipedia-settings", "--db", dsn, "--dry-run"]) == 0
         assert "dry run" in capsys.readouterr().out
-        conn = db.connect(path)
         count = conn.execute("SELECT COUNT(*) c FROM settings_observations").fetchone()["c"]
         assert count == 0

@@ -6,9 +6,8 @@ from mr_mouse_stats.models import TournamentMeta
 
 
 @pytest.fixture
-def app_db(tmp_path):
-    path = tmp_path / "admin.sqlite3"
-    conn = db.connect(path)
+def app_db(conn, dsn):
+    """Seed the (empty) test database and hand back the DSN the app connects with."""
     store = db.Store(conn)
 
     tid = store.upsert_tournament(
@@ -39,13 +38,12 @@ def app_db(tmp_path):
         "some unparseable answer", trigger_id=trig,
     )
     store.commit()
-    conn.close()
-    return path
+    return dsn
 
 
 @pytest.fixture
 def client(app_db):
-    app = create_app(str(app_db))
+    app = create_app(app_db)
     app.config["TESTING"] = True
     return app.test_client()
 
@@ -83,9 +81,10 @@ def test_candidates_page(client):
 
 def test_replace_handle_appends_and_retires(client, app_db):
     conn = db.connect(app_db)
-    account_id, player_id = conn.execute(
+    row = conn.execute(
         "SELECT id, player_id FROM social_accounts WHERE handle = 'oldhandle'"
     ).fetchone()
+    account_id, player_id = row["id"], row["player_id"]
     conn.close()
     resp = client.post(
         "/actions/replace-handle",
@@ -96,7 +95,7 @@ def test_replace_handle_appends_and_retires(client, app_db):
     conn = db.connect(app_db)
     rows = conn.execute(
         "SELECT handle, retired_at, source FROM social_accounts "
-        "WHERE player_id = ? AND platform = 'twitch' ORDER BY id", (player_id,),
+        "WHERE player_id = %s AND platform = 'twitch' ORDER BY id", (player_id,),
     ).fetchall()
     assert rows[0]["handle"] == "oldhandle"
     assert rows[0]["retired_at"] is not None
@@ -162,7 +161,7 @@ def test_dismiss_candidate(client, app_db):
     client.post(f"/actions/candidates/{message_id}/dismiss")
     conn = db.connect(app_db)
     row = conn.execute(
-        "SELECT dismissed_at FROM twitch_messages WHERE id = ?", (message_id,)
+        "SELECT dismissed_at FROM twitch_messages WHERE id = %s", (message_id,)
     ).fetchone()
     assert row["dismissed_at"] is not None  # kept, not deleted
     conn.close()

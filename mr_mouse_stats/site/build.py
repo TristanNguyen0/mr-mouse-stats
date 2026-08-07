@@ -7,12 +7,12 @@ output is self-contained HTML with inline SVG, hostable anywhere.
 from __future__ import annotations
 
 import re
-import sqlite3
 from pathlib import Path
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 from markupsafe import Markup
 
+from .. import db
 from . import queries, svg
 
 _SLUG_UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
@@ -22,7 +22,7 @@ def _slug(liquipedia_page: str) -> str:
     return _SLUG_UNSAFE.sub("_", liquipedia_page).strip("_")
 
 
-def build_site(conn: sqlite3.Connection, out_dir: Path, generated_at: str) -> int:
+def build_site(conn: db.Connection, out_dir: Path, generated_at: str) -> int:
     """Write the site into out_dir; returns the number of pages written."""
     env = Environment(
         loader=PackageLoader("mr_mouse_stats.site"),

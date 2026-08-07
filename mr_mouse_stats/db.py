@@ -1,69 +1,84 @@
-"""Thin data-access layer over SQLite.
+"""Thin data-access layer over Postgres.
 
-Business logic never writes SQL outside this module, so a Postgres swap
-only touches this file and schema.sql. All timestamps are ISO-8601 UTC
-strings produced by the caller (`now_utc()` helps).
+Business logic never writes SQL outside this module. All timestamps are
+ISO-8601 UTC strings produced by the caller (`now_utc()` helps) and stored
+as TEXT — observed_at deliberately mixes date and timestamp precision, and
+both sort correctly as strings.
+
+Schema creation is NOT done here. `connect()` opens a connection and
+nothing else; migrations are a deploy-time step (`apply_migrations`, or
+`mr-mouse-stats migrate`) so the runtime role never needs DDL rights and
+no per-request DDL crosses the network.
 """
 
 from __future__ import annotations
 
-import sqlite3
+import logging
 from datetime import datetime, timezone
 from importlib import resources
-from pathlib import Path
+from typing import Any
+
+import psycopg
+from psycopg.rows import dict_row
 
 from .models import PlayerInfo, TournamentMeta
+
+logger = logging.getLogger(__name__)
+
+MIGRATIONS_PACKAGE = "mr_mouse_stats.migrations"
+
+Connection = psycopg.Connection[dict[str, Any]]
+Row = dict[str, Any]
 
 
 def now_utc() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def connect(path: Path | str) -> sqlite3.Connection:
-    if path != ":memory:":
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    schema = resources.files("mr_mouse_stats").joinpath("schema.sql").read_text()
-    conn.executescript(schema)
-    _migrate(conn)
-    return conn
+def connect(dsn: str) -> Connection:
+    """Open a connection with dict rows. Does not touch the schema."""
+    return psycopg.connect(dsn, row_factory=dict_row)
 
 
-def _migrate(conn: sqlite3.Connection) -> None:
-    """Additive migrations for databases created by older schema versions."""
-    columns = {
-        row["name"]
-        for row in conn.execute("PRAGMA table_info(settings_observations)")
+def _migration_files() -> list[tuple[str, str]]:
+    """(name, sql) pairs in filename order."""
+    entries = [
+        entry
+        for entry in resources.files(MIGRATIONS_PACKAGE).iterdir()
+        if entry.name.endswith(".sql")
+    ]
+    return [(e.name, e.read_text()) for e in sorted(entries, key=lambda e: e.name)]
+
+
+def apply_migrations(conn: Connection) -> list[str]:
+    """Apply migrations not yet recorded. Returns the names applied.
+
+    Idempotent and safe to run against an already-current database, which
+    is what makes it usable as both a deploy step and a test fixture.
+    """
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS schema_migrations ("
+        "  name TEXT PRIMARY KEY,"
+        "  applied_at TIMESTAMPTZ NOT NULL DEFAULT now()"
+        ")"
+    )
+    already = {
+        row["name"] for row in conn.execute("SELECT name FROM schema_migrations")
     }
-    additions = {
-        "source_message_id": "INTEGER REFERENCES twitch_messages(id)",
-        "polling_rate": "INTEGER",
-        "zoom_sens": "REAL",
-    }
-    for name, ddl in additions.items():
-        if name not in columns:
-            conn.execute(
-                f"ALTER TABLE settings_observations ADD COLUMN {name} {ddl}"
-            )
-    social_columns = {
-        row["name"] for row in conn.execute("PRAGMA table_info(social_accounts)")
-    }
-    if "retired_at" not in social_columns:
-        # append-only handle correction: old handle rows get retired_at
-        # stamped once; corrected handles are appended as new rows
-        conn.execute("ALTER TABLE social_accounts ADD COLUMN retired_at TEXT")
-    message_columns = {
-        row["name"] for row in conn.execute("PRAGMA table_info(twitch_messages)")
-    }
-    if "dismissed_at" not in message_columns:
-        # admin-dismissed candidates (non-settings chatter); row is kept
-        conn.execute("ALTER TABLE twitch_messages ADD COLUMN dismissed_at TEXT")
+    applied: list[str] = []
+    for name, sql in _migration_files():
+        if name in already:
+            continue
+        logger.info("applying migration", extra={"fields": {"migration": name}})
+        conn.execute(sql)
+        conn.execute("INSERT INTO schema_migrations (name) VALUES (%s)", (name,))
+        applied.append(name)
+    conn.commit()
+    return applied
 
 
 class Store:
-    def __init__(self, conn: sqlite3.Connection) -> None:
+    def __init__(self, conn: Connection) -> None:
         self.conn = conn
 
     def upsert_tournament(
@@ -73,7 +88,7 @@ class Store:
             """
             INSERT INTO tournaments
                 (liquipedia_page, name, series, tier, start_date, end_date, fetched_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (liquipedia_page) DO UPDATE SET
                 name = excluded.name,
                 series = excluded.series,
@@ -98,7 +113,7 @@ class Store:
     def get_or_create_team(self, name: str) -> int:
         row = self.conn.execute(
             """
-            INSERT INTO teams (name) VALUES (?)
+            INSERT INTO teams (name) VALUES (%s)
             ON CONFLICT (name) DO UPDATE SET name = excluded.name
             RETURNING id
             """,
@@ -114,7 +129,7 @@ class Store:
             """
             INSERT INTO players
                 (liquipedia_page, resolution_status, first_seen_at, updated_at)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT (liquipedia_page) DO UPDATE SET updated_at = excluded.updated_at
             RETURNING id
             """,
@@ -126,14 +141,14 @@ class Store:
         self.conn.execute(
             """
             UPDATE players SET
-                player_id = ?,
-                real_name = ?,
-                romanized_name = ?,
-                country = ?,
-                roles = ?,
+                player_id = %s,
+                real_name = %s,
+                romanized_name = %s,
+                country = %s,
+                roles = %s,
                 resolution_status = 'resolved',
-                updated_at = ?
-            WHERE id = ?
+                updated_at = %s
+            WHERE id = %s
             """,
             (
                 info.player_id,
@@ -148,7 +163,7 @@ class Store:
 
     def mark_player_status(self, db_id: int, status: str, now: str) -> None:
         self.conn.execute(
-            "UPDATE players SET resolution_status = ?, updated_at = ? WHERE id = ?",
+            "UPDATE players SET resolution_status = %s, updated_at = %s WHERE id = %s",
             (status, now, db_id),
         )
 
@@ -168,7 +183,7 @@ class Store:
             INSERT INTO roster_entries
                 (tournament_id, team_id, player_id, role, is_sub, is_staff,
                  played, section)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (tournament_id, team_id, player_id) DO UPDATE SET
                 role = excluded.role,
                 is_sub = excluded.is_sub,
@@ -181,9 +196,9 @@ class Store:
                 team_id,
                 player_db_id,
                 role,
-                int(is_sub),
-                int(is_staff),
-                None if played is None else int(played),
+                is_sub,
+                is_staff,
+                played,
                 section,
             ),
         )
@@ -199,16 +214,17 @@ class Store:
     ) -> bool:
         """Append-only: a (player, platform, handle) triple is recorded once;
         a changed handle appends a new row. Returns True if newly recorded."""
-        cursor = self.conn.execute(
+        row = self.conn.execute(
             """
             INSERT INTO social_accounts
                 (player_id, platform, handle, url, source, observed_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT (player_id, platform, handle) DO NOTHING
+            RETURNING id
             """,
             (player_db_id, platform, handle, url, source, observed_at),
-        )
-        return cursor.rowcount == 1
+        ).fetchone()
+        return row is not None
 
     def add_settings_observation(
         self,
@@ -227,13 +243,13 @@ class Store:
             raise ValueError(f"unknown settings fields: {sorted(unknown)}")
         columns = ["player_id", "observed_at", "source", *fields]
         values = [player_db_id, observed_at, source, *fields.values()]
-        placeholders = ", ".join("?" for _ in values)
-        cursor = self.conn.execute(
+        placeholders = ", ".join("%s" for _ in values)
+        row = self.conn.execute(
             f"INSERT INTO settings_observations ({', '.join(columns)}) "
-            f"VALUES ({placeholders})",
+            f"VALUES ({placeholders}) RETURNING id",
             values,
-        )
-        return cursor.lastrowid
+        ).fetchone()
+        return row["id"]
 
     def record_twitch_message(
         self,
@@ -250,20 +266,21 @@ class Store:
     ) -> int | None:
         """Append a raw chat capture. Returns None when the Twitch message
         uuid was already recorded (reconnect overlap)."""
-        cursor = self.conn.execute(
+        row = self.conn.execute(
             """
             INSERT INTO twitch_messages
                 (msg_id, observed_at, channel, login, display_name, user_id,
                  badges, kind, trigger_id, text)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (msg_id) DO NOTHING
+            RETURNING id
             """,
             (msg_id, observed_at, channel, login, display_name, user_id,
              badges, kind, trigger_id, text),
-        )
-        return cursor.lastrowid if cursor.rowcount == 1 else None
+        ).fetchone()
+        return row["id"] if row is not None else None
 
-    def unparsed_response_messages(self) -> list[sqlite3.Row]:
+    def unparsed_response_messages(self) -> list[Row]:
         """Candidate responses with no derived settings observation yet."""
         return self.conn.execute(
             """
@@ -281,15 +298,15 @@ class Store:
     def player_ids_by_twitch_channel(self) -> dict[str, int]:
         """Map lowercase twitch handle -> players.id."""
         rows = self.conn.execute(
-            "SELECT LOWER(handle) handle, player_id FROM social_accounts "
+            "SELECT LOWER(handle) AS handle, player_id FROM social_accounts "
             "WHERE platform = 'twitch' AND retired_at IS NULL"
         ).fetchall()
         return {row["handle"]: row["player_id"] for row in rows}
 
     def retire_social_account(self, account_id: int, retired_at: str) -> None:
         self.conn.execute(
-            "UPDATE social_accounts SET retired_at = ? "
-            "WHERE id = ? AND retired_at IS NULL",
+            "UPDATE social_accounts SET retired_at = %s "
+            "WHERE id = %s AND retired_at IS NULL",
             (retired_at, account_id),
         )
 
@@ -299,22 +316,22 @@ class Store:
         self.conn.execute(
             """
             INSERT INTO channel_join_status (channel, confirmed, last_checked_at)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
             ON CONFLICT (channel) DO UPDATE SET
                 confirmed = excluded.confirmed,
                 last_checked_at = excluded.last_checked_at
             """,
-            (channel.lower(), int(confirmed), checked_at),
+            (channel.lower(), confirmed, checked_at),
         )
 
     def dismiss_twitch_message(self, message_id: int, dismissed_at: str) -> None:
         self.conn.execute(
-            "UPDATE twitch_messages SET dismissed_at = ? "
-            "WHERE id = ? AND dismissed_at IS NULL",
+            "UPDATE twitch_messages SET dismissed_at = %s "
+            "WHERE id = %s AND dismissed_at IS NULL",
             (dismissed_at, message_id),
         )
 
-    def resolved_players(self) -> list[sqlite3.Row]:
+    def resolved_players(self) -> list[Row]:
         return self.conn.execute(
             "SELECT id, liquipedia_page FROM players "
             "WHERE resolution_status = 'resolved' ORDER BY liquipedia_page"
@@ -325,7 +342,7 @@ class Store:
     ) -> bool:
         row = self.conn.execute(
             "SELECT 1 FROM settings_observations "
-            "WHERE player_id = ? AND source = ? AND observed_at = ?",
+            "WHERE player_id = %s AND source = %s AND observed_at = %s",
             (player_db_id, source, observed_at),
         ).fetchone()
         return row is not None

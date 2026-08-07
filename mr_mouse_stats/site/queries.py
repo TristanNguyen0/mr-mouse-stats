@@ -7,9 +7,10 @@ both sort correctly as strings, so "latest" is a plain string max.
 
 from __future__ import annotations
 
-import sqlite3
 from dataclasses import dataclass
 from statistics import median
+
+from .. import db
 
 
 @dataclass(frozen=True)
@@ -43,7 +44,7 @@ class HistoryEntry:
     raw_text: str | None
 
 
-def _mouse(row: sqlite3.Row) -> str | None:
+def _mouse(row: db.Row) -> str | None:
     if row["mouse_brand"] is None:
         return None
     if row["mouse_model"]:
@@ -58,9 +59,9 @@ def _primary_role(roles: str | None) -> str | None:
 
 
 def _observations_by_player(
-    conn: sqlite3.Connection,
-) -> dict[int, list[sqlite3.Row]]:
-    grouped: dict[int, list[sqlite3.Row]] = {}
+    conn: db.Connection,
+) -> dict[int, list[db.Row]]:
+    grouped: dict[int, list[db.Row]] = {}
     rows = conn.execute(
         "SELECT * FROM settings_observations ORDER BY observed_at, id"
     )
@@ -69,7 +70,7 @@ def _observations_by_player(
     return grouped
 
 
-def player_summaries(conn: sqlite3.Connection) -> list[PlayerSummary]:
+def player_summaries(conn: db.Connection) -> list[PlayerSummary]:
     """All resolved players (with or without observations), page order."""
     observations = _observations_by_player(conn)
     players = conn.execute(
@@ -81,7 +82,9 @@ def player_summaries(conn: sqlite3.Connection) -> list[PlayerSummary]:
                 ORDER BY re.id DESC LIMIT 1) AS team
         FROM players p
         WHERE p.resolution_status = 'resolved'
-        ORDER BY p.liquipedia_page
+        -- COLLATE "C" pins byte ordering so the rendered page does not
+        -- depend on the server's locale (and matches the pre-Postgres site).
+        ORDER BY p.liquipedia_page COLLATE "C"
         """
     ).fetchall()
 
@@ -118,11 +121,11 @@ def player_summaries(conn: sqlite3.Connection) -> list[PlayerSummary]:
     return summaries
 
 
-def player_history(conn: sqlite3.Connection, player_db_id: int) -> list[HistoryEntry]:
+def player_history(conn: db.Connection, player_db_id: int) -> list[HistoryEntry]:
     """Observations oldest-first, consecutive identical readings collapsed
     into stints — so a change back to earlier settings stays visible."""
     rows = conn.execute(
-        "SELECT * FROM settings_observations WHERE player_id = ? "
+        "SELECT * FROM settings_observations WHERE player_id = %s "
         "ORDER BY observed_at, id",
         (player_db_id,),
     ).fetchall()
