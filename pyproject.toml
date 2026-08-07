@@ -5,7 +5,9 @@ description = "Mouse settings and settings history for pro Marvel Rivals players
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.141.1",
     "flask>=3.1.3",
+    "mangum>=0.21.0",
     "mwparserfromhell>=0.6.6",
     "psycopg[binary]>=3.3.4",
 ]
@@ -15,7 +17,9 @@ mr-mouse-stats = "mr_mouse_stats.cli:main"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest>=8",
+    "uvicorn>=0.52.1",
 ]
 
 [build-system]

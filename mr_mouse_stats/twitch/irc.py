@@ -74,6 +74,32 @@ class ReadOnlyIrcClient:
         assert self._sock is not None
         self._sock.sendall((line + "\r\n").encode())
 
+    def join(self, channels: list[str]) -> list[str]:
+        """Join additional channels on the live connection.
+
+        Paced exactly like the initial handshake, and added to self.channels
+        so a later reconnect re-joins them. Returns the channels newly added
+        (already-joined ones are ignored). Safe to call before connecting:
+        the next handshake picks them up.
+        """
+        added = [
+            channel
+            for channel in dict.fromkeys(c.lstrip("#").lower() for c in channels)
+            if channel not in self.channels
+        ]
+        if not added:
+            return []
+        self.channels.extend(added)
+        if self._sock is None:
+            return added
+        for start in range(0, len(added), JOIN_BATCH):
+            if start:
+                self._sleep(JOIN_INTERVAL)
+            batch = added[start : start + JOIN_BATCH]
+            self._send("JOIN " + ",".join(f"#{c}" for c in batch))
+        logger.info("joined additional channels", extra={"fields": {"channels": added}})
+        return added
+
     def _handshake(self) -> None:
         self._buf = b""
         self.confirmed_joins = set()

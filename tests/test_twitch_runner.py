@@ -120,3 +120,76 @@ def test_parse_observations_dry_run(store, dsn, capsys):
     count = conn.execute("SELECT COUNT(*) c FROM settings_observations").fetchone()["c"]
     assert count == 0
     conn.close()
+
+
+def clock_at(*values):
+    """Scripted clock that holds its final value instead of running out."""
+    remaining = iter(values)
+    current = [0.0]
+
+    def tick():
+        try:
+            current[0] = next(remaining)
+        except StopIteration:
+            pass
+        return current[0]
+
+    return tick
+
+
+class RecordingClient(FakeClient):
+    """FakeClient that also tracks joined channels, like the real client."""
+
+    def __init__(self, messages, channels):
+        super().__init__(messages)
+        self.channels = list(channels)
+        self.joined = []
+
+    def join(self, channels):
+        added = [c for c in channels if c not in self.channels]
+        if not added:  # mirrors ReadOnlyIrcClient.join's early return
+            return []
+        self.channels.extend(added)
+        self.joined.append(added)
+        return added
+
+
+def test_collect_joins_handles_added_after_startup(store):
+    """An admin handle fix is picked up without restarting the collector."""
+    client = RecordingClient([None] * 4, channels=["shpeediry"])
+    # a handle corrected in the dashboard while the collector is running
+    pid = store.upsert_player_stub("Trqstme", "resolved", "t0")
+    store.record_social_account(pid, "twitch", "trqstmemr", None, "t0", source="manual")
+    store.commit()
+
+    # clock crosses CHANNEL_REFRESH_INTERVAL on the second tick
+    collect(client, store, clock=clock_at(0.0, 400.0))
+
+    assert client.joined == [["trqstmemr"]]
+    assert "trqstmemr" in client.channels
+
+
+def test_collect_does_not_rejoin_known_channels(store):
+    client = RecordingClient([None] * 4, channels=["shpeediry"])
+    collect(client, store, clock=clock_at(0.0, 400.0))
+    assert client.joined == []  # shpeediry already joined; nothing new
+
+
+def test_collect_survives_a_failing_channel_refresh(store):
+    class Broken:
+        def player_ids_by_twitch_channel(self):
+            raise RuntimeError("database went away")
+
+        def __getattr__(self, name):
+            return getattr(store, name)
+
+    client = RecordingClient([None] * 4, channels=["shpeediry"])
+    # must not propagate: losing the refresh is survivable, losing the loop is not
+    collect(client, Broken(), clock=clock_at(0.0, 400.0))
+    assert client.joined == []
+
+
+def test_dry_run_does_not_refresh_channels():
+    client = RecordingClient([None] * 4, channels=["shpeediry"])
+    collect(client, store=None, clock=clock_at(0.0, 400.0))
+    assert client.joined == []

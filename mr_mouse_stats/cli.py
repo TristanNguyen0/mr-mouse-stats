@@ -354,6 +354,12 @@ def cmd_build_site(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    from .service import run_service
+
+    return run_service()
+
+
 def cmd_migrate(args: argparse.Namespace) -> int:
     conn = db.connect(args.db)
     applied = db.apply_migrations(conn)
@@ -460,6 +466,12 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--out", type=Path, default=Path("site"),
                        help="output directory (default: site/)")
     build.set_defaults(func=cmd_build_site)
+
+    serve = sub.add_parser(
+        "serve",
+        help="run the long-lived service: twitch collector + timed liquipedia scrape",
+    )
+    serve.set_defaults(func=cmd_serve)
 
     migrate = sub.add_parser(
         "migrate", help="apply pending schema migrations (deploy step)"

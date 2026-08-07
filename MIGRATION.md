@@ -16,13 +16,22 @@ rationale for each is kept in place so the reasoning stays auditable):
 - **No scraper Lambda.** The Liquipedia scrape rides along in the Fargate task on a timer
   rather than becoming a scheduled Lambda. See §2.2 and §2.3.
 
-**Progress: Phases 0–2 are done.** Config is environment-driven (`mr_mouse_stats/config.py`),
-the DAL runs on psycopg3 against Postgres, `schema.sql` and `_migrate()` are replaced by
-versioned migrations in `mr_mouse_stats/migrations/` applied by `mr-mouse-stats migrate`,
-and `scripts/import_from_sqlite.py` moved all 1,671 legacy rows across with primary keys
-intact. 127 tests green; `build-site` reproduces the committed site byte-for-byte apart
-from its generated-on date. Two findings that emerged during execution are recorded in
-§7. Next up is Phase 3.
+**Progress: all phases are built and verified locally. Nothing is deployed to AWS** —
+the environment this was built in has no AWS credentials, so the Terraform in `infra/`
+is validated but unapplied. See §8 for exactly what that leaves outstanding.
+
+| Phase | State |
+|---|---|
+| 0 — config | done. `mr_mouse_stats/config.py`, env-driven with local defaults |
+| 1 — Postgres | done. psycopg3 DAL, versioned migrations, `mr-mouse-stats migrate` |
+| 2 — Neon-ready data | done. `scripts/import_from_sqlite.py`, 1,671 rows, keys preserved |
+| 3 — admin API | done. `mr_mouse_stats/api/admin.py`, all 8 routes 401 without a token |
+| 4 — public API | done. `mr_mouse_stats/api/public.py`, read-only, GET-only by test |
+| 5 — Fargate task | done. `Dockerfile`, `service.py`, spooling write path |
+| 6 — frontend | done. `frontend/`, static export, Cognito PKCE admin view |
+| infra | written and `terraform validate`-clean; **never applied** |
+
+176 tests green. Findings that emerged during execution are in §7.
 
 ---
 
@@ -298,14 +307,17 @@ Four things do affect chat coverage, none of which is the timer:
    event costs that. Already true of the systemd unit; not worsened by this architecture,
    but it argues for infrequent deploys of this task and for `SIGTERM` handling that
    doesn't add restarts of its own.
-3. **New handles are not joined until restart.** `cmd_collect_twitch` reads the channel
-   list **once** at startup (`cli.py:256-259`); the admin flash message already concedes
-   this (`actions.py:34-35`: "restart the collector to pick it up"). Co-hosting makes it
-   sharper — the timer can discover a new player's Twitch handle at 03:00 and the collector
-   won't be in that channel until something restarts it. Worth fixing here: `_send` already
-   permits `JOIN` (`irc.py:29`), so periodically re-reading
-   `player_ids_by_twitch_channel()` and incrementally joining new channels (respecting
-   `JOIN_BATCH`/`JOIN_INTERVAL`) closes the loop between the two halves of the task.
+3. ~~**New handles are not joined until restart.**~~ **Fixed.** `cmd_collect_twitch` used to
+   read the channel list once at startup, so an admin handle correction needed a collector
+   restart — costing ~40 s of JOIN pacing and any open correlation windows. Now
+   `ReadOnlyIrcClient.join()` adds channels on the live connection (paced by the same
+   `JOIN_BATCH`/`JOIN_INTERVAL`, and persisted to `self.channels` so reconnects re-join
+   them), and `runner._join_new_channels` re-reads `player_ids_by_twitch_channel()` every
+   `CHANNEL_REFRESH_INTERVAL` (300 s) to pick up anything added since startup. A failing
+   refresh is caught and logged — losing a refresh is survivable, losing the collection
+   loop is not. Dry runs never refresh. The admin flash message no longer tells the user to
+   restart. This also closes the loop between the two halves of the co-hosted task: the
+   timer can discover a handle at 03:00 and the collector joins it without intervention.
 4. **Coverage is opportunistic by design, and this dominates everything above.** A response
    only exists if a *viewer* types `!dpi` — the client never triggers one, by hard
    constraint. Current yield is 1,217 captured messages → 27 Twitch-sourced observations.
@@ -744,7 +756,39 @@ is the same hazard with a much worse blast radius**, since Twitch captures canno
 re-fetched (see the riskiest-step section). Any test or script that can truncate should
 assert on the target database name first.
 
+## 8. What deployment still requires
+
+Everything below needs AWS credentials, which the build environment did not have. The
+code paths themselves are verified — the gaps are operational, not unknown.
+
+1. **Apply the Terraform.** `infra/README.md` has the runbook. Expect a two-pass first
+   apply: the Lambdas reference `:latest` in ECR, which does not exist until images are
+   pushed.
+2. **Push images and deploy the frontend** with `scripts/deploy.sh`.
+3. **Run `mr-mouse-stats migrate` against Neon.** The runtime roles hold DML only, so
+   schema changes are a deliberate deploy step.
+4. **Import the data** with `scripts/import_from_sqlite.py`, pointed at the Neon DSN —
+   or dump/restore from the local Postgres, which is now the source of truth.
+5. **Verify the authorizer rejects before invoke.** Send an unauthenticated request to an
+   `/admin/*` route and confirm there is *no* CloudWatch log entry for the admin function.
+   A 401 alone does not prove where it came from — the app returns 401 too, and the whole
+   point of the design is that the request never reaches it. The access log's
+   `authorizerErr` field exists for this check.
+6. **Cut the collector over and run it in parallel** with the systemd unit for 48h against
+   the same database, per the Phase 5 verification. Then kill the systemd unit.
+7. **Delete what the new stack replaces** — but only after it is serving traffic. The
+   Flask dashboard (`mr_mouse_stats/admin/app.py`, `actions.py`, `templates/`) and the
+   static site renderer (`site/build.py`, `site/svg.py`, `site/templates/`) are
+   deliberately still in the tree: removing them before the React app is deployed would
+   leave no working dashboard and no way to publish the site. `site/queries.py` stays
+   regardless — the public API is built on it.
+
+`build-site` is also worth keeping past the cutover as a verification harness: it is what
+caught the collation change in §7.1, and diffing its output against a known-good site is
+a cheap end-to-end check on the whole read path.
+
 ## Attribution
 
-Liquipedia content is CC-BY-SA 3.0. The Next.js frontend must carry the same attribution
-the Jinja templates do today — check `site/templates/base.html` before deleting it.
+Liquipedia content is CC-BY-SA 3.0. The public API exposes it at `/attribution`, and the
+Next.js layout carries it in the footer, matching what the Jinja templates do
+(`site/templates/base.html:37-38`).

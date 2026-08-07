@@ -33,13 +33,45 @@ uv run mr-mouse-stats admin   # http://127.0.0.1:8177/
 uv run mr-mouse-stats build-site
 ```
 
-## Deployment
+## Architecture
 
-Long-running collection runs as a systemd user service; see the install
-steps in [`deploy/mr-mouse-stats-collect.service`](deploy/mr-mouse-stats-collect.service).
-After collection has accrued, refresh derived data and the site with
-`parse-observations` + `build-site`; `site/` is self-contained and can be
-served by any static host.
+```
+Liquipedia API ─┐
+                ├─► Postgres (Neon) ─┬─► public API  ─┐
+Twitch IRC ─────┘                    │   (read-only)  ├─► Next.js static site
+                                     │                │   (S3 + CloudFront)
+                                     └─► admin API ───┘
+                                         (owns every write,
+                                          Cognito JWT authorizer)
+```
+
+The collector and the Liquipedia scrape share one always-on ECS Fargate task
+(`mr-mouse-stats serve`): the IRC client stays connected continuously while
+the scrape runs on a timer on its own thread. Both APIs are Lambdas behind
+one HTTP API Gateway on separate routes.
+
+Run the two APIs locally:
+
+```sh
+uv run uvicorn mr_mouse_stats.api.public:app --port 8000
+MR_MOUSE_STATS_ADMIN_DEV_AUTH=1 uv run uvicorn mr_mouse_stats.api.admin:app --port 8001
+```
+
+`MR_MOUSE_STATS_ADMIN_DEV_AUTH=1` bypasses authentication for local work.
+Without it the admin API returns 401 to everything but `/health`; in AWS the
+Cognito authorizer rejects requests before the Lambda is invoked.
+
+The frontend lives in [`frontend/`](frontend/) (`npm run dev`), and the
+infrastructure in [`infra/`](infra/) — see
+[`infra/README.md`](infra/README.md) for the deploy runbook.
+
+### Legacy paths, still present
+
+The Flask dashboard (`mr-mouse-stats admin`), the static site renderer
+(`mr-mouse-stats build-site`), and the systemd unit in
+[`deploy/`](deploy/mr-mouse-stats-collect.service) all still work. They are
+superseded by the React admin view, the public API, and the Fargate service
+respectively, but are kept until that stack is actually deployed.
 
 ## Configuration
 

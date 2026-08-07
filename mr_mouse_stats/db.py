@@ -349,3 +349,8 @@ class Store:
 
     def commit(self) -> None:
         self.conn.commit()
+
+    def rollback(self) -> None:
+        """Abandon the current transaction. A failed write leaves the
+        connection unusable until this runs."""
+        self.conn.rollback()

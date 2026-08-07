@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+.pytest_cache
+__pycache__
+*.pyc
+.cache
+data
+site
+frontend/node_modules
+frontend/out
+frontend/.next
+infra/.terraform
+tests
+scripts
+MIGRATION.md

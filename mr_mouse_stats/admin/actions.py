@@ -31,8 +31,8 @@ def replace_handle():
     )
     store.commit()
     flash(
-        f"handle '{new_handle}' recorded — restart the collector to pick it up: "
-        "systemctl --user restart mr-mouse-stats-collect"
+        f"handle '{new_handle}' recorded — the collector joins it automatically "
+        "within a few minutes; no restart needed"
     )
     return redirect(url_for("handles"))
 

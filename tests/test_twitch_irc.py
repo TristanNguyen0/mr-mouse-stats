@@ -152,3 +152,46 @@ def test_server_reconnect_command_triggers_reconnect():
 def test_channel_names_normalized():
     client, _ = make_client([FakeSocket([])], channels=("#Alpha", "BETA"))
     assert client.channels == ["alpha", "beta"]
+
+
+def test_join_adds_channels_on_a_live_connection():
+    sock = FakeSocket([line(PRIVMSG)])
+    client, _ = make_client([sock])
+    take(client.run(), 1)
+    sock.sent.clear()
+
+    added = client.join(["#Gamma", "delta"])
+    assert added == ["gamma", "delta"]  # normalized
+    assert sock.sent == ["JOIN #gamma,#delta\r\n"]
+    # persisted, so a reconnect re-joins them
+    assert client.channels == ["alpha", "beta", "gamma", "delta"]
+
+
+def test_join_ignores_channels_already_joined():
+    sock = FakeSocket([line(PRIVMSG)])
+    client, _ = make_client([sock])
+    take(client.run(), 1)
+    sock.sent.clear()
+
+    assert client.join(["alpha", "#BETA"]) == []
+    assert sock.sent == []  # no redundant JOIN traffic
+
+
+def test_join_paces_large_additions():
+    sock = FakeSocket([line(PRIVMSG)])
+    client, sleeps = make_client([sock])
+    take(client.run(), 1)
+    sock.sent.clear()
+    sleeps.clear()
+
+    client.join([f"new{i}" for i in range(20)])  # 15 + 5
+    joins = [s for s in sock.sent if s.startswith("JOIN")]
+    assert len(joins) == 2
+    assert sleeps == [10.0]
+
+
+def test_join_before_connecting_defers_to_handshake():
+    client, _ = make_client([FakeSocket([])])
+    assert client.join(["gamma"]) == ["gamma"]
+    assert client._sock is None  # nothing sent; handshake will cover it
+    assert "gamma" in client.channels
