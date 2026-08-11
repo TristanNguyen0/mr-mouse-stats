@@ -28,12 +28,21 @@ if [[ "$TARGET" == "all" || "$TARGET" == "images" ]]; then
 
   # Both images are ARM64: Graviton Lambda and Fargate are ~20% cheaper and
   # nothing in this codebase is architecture-sensitive.
+  #
+  # --provenance=false --sbom=false is load-bearing for the API image, not
+  # hygiene. With attestations on (buildx's default) the push is an OCI image
+  # index wrapping the real manifest plus an attestation manifest, and
+  # CreateFunction rejects it: "The image manifest, config or layer media type
+  # for the source image ... is not supported." Fargate accepts either form;
+  # the collector keeps the flags so both images stay the same shape.
   echo "==> building api image (arm64)"
   docker buildx build --platform linux/arm64 -f Dockerfile.lambda \
+    --provenance=false --sbom=false \
     -t "$API_REPO:latest" --push .
 
   echo "==> building collector image (arm64)"
   docker buildx build --platform linux/arm64 -f Dockerfile \
+    --provenance=false --sbom=false \
     -t "$COLLECTOR_REPO:latest" --push .
 
   echo "==> rolling the lambdas onto the new image"

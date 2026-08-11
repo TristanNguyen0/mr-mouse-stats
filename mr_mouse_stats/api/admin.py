@@ -203,6 +203,13 @@ def create_app() -> FastAPI:
         title="mr-mouse-stats admin API",
         description="Owns every write. Behind a Cognito JWT authorizer.",
         version="1.0.0",
+        # Behind the gateway this app sees paths with `/admin` already
+        # stripped (lambda_handlers.ADMIN_BASE_PATH), and Starlette builds
+        # redirect targets from the stripped path — so a trailing slash would
+        # redirect to `/overview`, which the gateway routes to the *public*
+        # function. An honest 404 beats a redirect that silently changes
+        # which Lambda answers.
+        redirect_slashes=False,
     )
 
     @app.get("/health", include_in_schema=False)

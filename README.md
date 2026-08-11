@@ -61,9 +61,10 @@ MR_MOUSE_STATS_ADMIN_DEV_AUTH=1 uv run uvicorn mr_mouse_stats.api.admin:app --po
 Without it the admin API returns 401 to everything but `/health`; in AWS the
 Cognito authorizer rejects requests before the Lambda is invoked.
 
-The frontend lives in [`frontend/`](frontend/) (`npm run dev`), and the
-infrastructure in [`infra/`](infra/) — see
-[`infra/README.md`](infra/README.md) for the deploy runbook.
+The frontend lives in [`frontend/`](frontend/) (`npm run dev`) and the
+infrastructure in [`infra/`](infra/). [`CLOUD.md`](CLOUD.md) is the
+deployment runbook; [`MIGRATION.md`](MIGRATION.md) explains why the
+architecture is shaped the way it is.
 
 ### Legacy paths, still present
 
@@ -80,6 +81,7 @@ Everything is read from the environment, with local-development defaults:
 | Variable | Default | Purpose |
 |---|---|---|
 | `MR_MOUSE_STATS_DB` | `postgresql://postgres:postgres@localhost:55432/mr_mouse_stats` | Postgres DSN |
+| `MR_MOUSE_STATS_DB_SECRET_ARN` | — | Hosted only. AWS Secrets Manager ARN to read the DSN from when `MR_MOUSE_STATS_DB` is unset; see [`CLOUD.md`](CLOUD.md). |
 | `MR_MOUSE_STATS_CACHE_DIR` | `.cache/liquipedia` | on-disk API response cache |
 | `MR_MOUSE_STATS_WIKI` | `marvelrivals` | Liquipedia wiki |
 

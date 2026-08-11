@@ -12,6 +12,12 @@ dependencies = [
     "psycopg[binary]>=3.3.4",
 ]
 
+# Only the Lambdas need boto3, to read the database DSN out of Secrets
+# Manager. Keeping it out of the default dependencies keeps the collector
+# image (Dockerfile) slim; Dockerfile.lambda installs it with --extra lambda.
+[project.optional-dependencies]
+lambda = ["boto3>=1.35"]
+
 [project.scripts]
 mr-mouse-stats = "mr_mouse_stats.cli:main"
 

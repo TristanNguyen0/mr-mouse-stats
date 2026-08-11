@@ -5,7 +5,7 @@ output "api_base_url" {
 
 output "admin_api_base_url" {
   description = "Admin API base — NEXT_PUBLIC_ADMIN_API_BASE."
-  value       = "${aws_apigatewayv2_api.main.api_endpoint}/admin"
+  value       = "${aws_apigatewayv2_api.main.api_endpoint}${local.admin_base_path}"
 }
 
 output "cognito_domain" {

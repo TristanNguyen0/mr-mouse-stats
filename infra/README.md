@@ -27,23 +27,45 @@ ECS Fargate (ARM64, public subnet) ── collector + timed scrape ────�
 
 ## First deploy
 
+Full runbook — prerequisites, Neon setup, data migration, verification — is in
+[`../CLOUD.md`](../CLOUD.md). The short version:
+
 ```sh
 cd infra
 terraform init
-terraform apply -var="neon_dsn=postgresql://…-pooler…/mr_mouse_stats?sslmode=require" \
-                -var='admin_emails=["you@example.com"]'
+
+# Put the DSN and the admin list in `secrets.auto.tfvars` — gitignored, and
+# auto-loaded by every terraform command. Not `-var=`, which lands in shell
+# history and in `ps` output, and not `TF_VAR_`, which is only set in the one
+# shell that exported it.
+$EDITOR secrets.auto.tfvars
+
+# 1. Registries first: Terraform cannot create a Lambda whose image
+#    does not exist yet, and the functions reference :latest.
+terraform apply -target=aws_ecr_repository.api \
+                -target=aws_ecr_repository.collector
+
+# 2. Build and push both images (see CLOUD.md §3.2)
+
+# 3. Everything else
+terraform apply
 ```
 
-ECR repositories must exist before the Lambdas can pull, and the Lambdas
-reference `:latest`. On a cold account, apply once (it will fail on the
-Lambda image pull), push images, then apply again. Subsequent deploys are
-just `scripts/deploy.sh`.
+Both variables have to stay in that file rather than being passed per-command.
+`admin_emails` defaults to `[]`, so an `apply` that omits it deletes the
+Cognito admin user; `neon_dsn` has no default, so an `apply` that omits it
+prompts, and an empty answer at the prompt used to reach AWS as an empty
+`SecretString` and fail the apply partway through. Both now fail at plan time
+instead — see the `validation` blocks in `variables.tf`.
 
-Then apply the schema — the runtime roles hold DML only, on purpose:
+Then apply the schema with the **direct** (non-pooled) DSN — the runtime roles
+hold DML only, on purpose:
 
 ```sh
-MR_MOUSE_STATS_DB="$NEON_DSN" uv run mr-mouse-stats migrate
+MR_MOUSE_STATS_DB="$NEON_DIRECT_DSN" uv run mr-mouse-stats migrate
 ```
+
+Subsequent deploys are just `scripts/deploy.sh`.
 
 ## Deliberate choices worth not undoing
 
@@ -68,6 +90,14 @@ settings force stop-then-start rather than an overlapping rollout.
 **Use Neon's pooled endpoint** (`-pooler` in the hostname) for the Lambdas.
 They scale horizontally and would otherwise exhaust the direct connection
 limit.
+
+**Nothing gets the DSN as a value.** The Lambdas are given
+`MR_MOUSE_STATS_DB_SECRET_ARN` and `config.db()` resolves it through the role
+grant in `api.tf`, once per cold start; Fargate resolves the same secret
+through the ECS `secrets` block. Putting the value in `environment` instead
+would deploy cleanly and leave the DSN readable in the console and in
+`aws lambda get-function-configuration`. `tests/test_config.py` fails if it
+comes back.
 
 ## What is not here
 

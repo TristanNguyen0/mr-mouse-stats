@@ -36,14 +36,22 @@ resource "aws_iam_role_policy" "lambda_secrets" {
 }
 
 locals {
-  # Lambda cannot read Secrets Manager into an env var natively, so the DSN
-  # is injected as a secret reference resolved by the Parameters and Secrets
-  # extension. Simplest correct alternative: pass it directly and accept it
-  # being visible in the function configuration.
+  # The one place the admin prefix is written. It drives three things that
+  # must agree or every admin route 404s: the gateway route key, the base URL
+  # the frontend is built against, and the prefix Mangum strips back off
+  # before FastAPI routes the request. Change it here and all three follow.
+  admin_base_path = "/admin"
+
+  # The DSN is deliberately not a value here. Lambda cannot resolve a secret
+  # reference into an env var natively, and a plain value would be readable in
+  # the console and in `aws lambda get-function-configuration`. So the
+  # functions get the ARN and `config.db()` resolves it through the role grant
+  # above, once per cold start. Fargate reaches the same secret through the
+  # ECS `secrets` block, which does the resolution for it.
   lambda_environment = {
-    MR_MOUSE_STATS_DB           = var.neon_dsn
-    MR_MOUSE_STATS_CORS_ORIGINS = local.site_origin
-    TZ                          = "UTC"
+    MR_MOUSE_STATS_DB_SECRET_ARN = aws_secretsmanager_secret.database.arn
+    MR_MOUSE_STATS_CORS_ORIGINS  = local.site_origin
+    TZ                           = "UTC"
   }
 }
 
@@ -63,6 +71,10 @@ resource "aws_lambda_function" "public" {
   environment {
     variables = local.lambda_environment
   }
+
+  # The ARN alone is not enough: without a version, the first cold start
+  # fails on ResourceNotFoundException.
+  depends_on = [aws_secretsmanager_secret_version.database]
 }
 
 resource "aws_lambda_function" "admin" {
@@ -78,9 +90,15 @@ resource "aws_lambda_function" "admin" {
     command = ["mr_mouse_stats.api.lambda_handlers.admin_handler"]
   }
 
+  # Admin-only: the public function is routed at the root and has no prefix
+  # to strip.
   environment {
-    variables = local.lambda_environment
+    variables = merge(local.lambda_environment, {
+      MR_MOUSE_STATS_ADMIN_BASE_PATH = local.admin_base_path
+    })
   }
+
+  depends_on = [aws_secretsmanager_secret_version.database]
 }
 
 resource "aws_cloudwatch_log_group" "public" {
@@ -142,7 +160,7 @@ resource "aws_apigatewayv2_route" "public" {
 # rejected here, and the admin Lambda is never invoked.
 resource "aws_apigatewayv2_route" "admin" {
   api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "ANY /admin/{proxy+}"
+  route_key          = "ANY ${local.admin_base_path}/{proxy+}"
   target             = "integrations/${aws_apigatewayv2_integration.admin.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

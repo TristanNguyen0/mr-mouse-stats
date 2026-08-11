@@ -18,7 +18,7 @@ COPY mr_mouse_stats ./mr_mouse_stats
 
 # Install into the Lambda task root rather than a venv: the runtime adds
 # ${LAMBDA_TASK_ROOT} to sys.path, and a venv would need activation.
-RUN uv export --locked --no-dev --no-emit-project > requirements.txt \
+RUN uv export --locked --no-dev --extra lambda --no-emit-project > requirements.txt \
     && uv pip install --system --target "${LAMBDA_TASK_ROOT}" -r requirements.txt \
     && uv pip install --system --target "${LAMBDA_TASK_ROOT}" --no-deps .
 
