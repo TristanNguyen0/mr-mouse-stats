@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 USER_AGENT = (
     "mr-mouse-stats/0.1 "
-    "(Marvel Rivals pro settings stats project; contact: rockorso64@gmail.com)"
+    "(Marvel Rivals pro settings stats project; contact: tristann0708@gmail.com)"
 )
 GENERAL_INTERVAL = 2.0
 PARSE_INTERVAL = 30.0
