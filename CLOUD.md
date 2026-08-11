@@ -109,9 +109,9 @@ Create a project, then take **two** connection strings:
 
 Both need `?sslmode=require`.
 
-Only the pooled one goes to AWS, as `TF_VAR_neon_dsn` below. The direct one is
-a hand-operated migration credential: keep it in your own environment or
-password manager and never put it in Terraform.
+Only the pooled one goes to AWS, via `secrets.auto.tfvars` in §3.1. The
+direct one is a hand-operated migration credential: keep it in your own
+environment or password manager and never put it in Terraform.
 
 **Quote it.** A Neon DSN contains `&` (`?sslmode=require&channel_binding=require`).
 Unquoted in a `.env`, the shell splits the line at the `&`, backgrounds the
@@ -149,7 +149,8 @@ terraform init
 
 # Put the pooled DSN and the admin list in `secrets.auto.tfvars` — gitignored,
 # and auto-loaded by every terraform command, so no apply below can miss them.
-# Not `-var=`, which lands in shell history and in `ps` output.
+# Not `-var=`, which lands in shell history and in `ps` output, and not
+# `TF_VAR_`, which is only set in the one shell that exported it.
 $EDITOR secrets.auto.tfvars
 
 terraform apply \
@@ -305,9 +306,9 @@ something.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `neon_dsn` | — | Required. Pooled endpoint. Stored in Secrets Manager; pass it as `TF_VAR_neon_dsn`, not `-var=`. |
+| `neon_dsn` | — | Required. Pooled endpoint. Stored in Secrets Manager; set it in `secrets.auto.tfvars`, not `-var=` (shell history, `ps`) and not `TF_VAR_` (only set in the exporting shell). |
 | `region` | `us-east-1` | Cost figures in `MIGRATION.md` are us-east-1 list prices. |
-| `admin_emails` | `[]` | Seeded Cognito users. |
+| `admin_emails` | — | Required, no default. Seeded Cognito users; see §3.1. |
 | `tournaments` | Mid Season Finals | Pages the scheduled scrape refreshes. |
 | `scrape_interval_seconds` | `86400` | Daily. See §6 before lowering it. |
 | `site_domain` / `acm_certificate_arn` | `""` | Custom domain; certificate must be in us-east-1. |

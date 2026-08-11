@@ -17,10 +17,13 @@ variable "neon_dsn" {
     connection limit. The direct endpoint is for `migrate` and the one-off
     import, run by hand, and has no business being in here.
 
-    Goes into Secrets Manager; every runtime reads it from there. Pass it as
-    TF_VAR_neon_dsn rather than -var=, which lands in shell history. Note that
-    `sensitive` only suppresses CLI output — the value is still plaintext in
-    terraform.tfstate, which is local until there is a remote backend.
+    Goes into Secrets Manager; every runtime reads it from there. Set it in
+    secrets.auto.tfvars, which is gitignored and auto-loaded by every
+    terraform command — not -var=, which lands in shell history and in `ps`
+    output, and not TF_VAR_neon_dsn, which is only set in the one shell that
+    exported it. Note that `sensitive` only suppresses CLI output — the value
+    is still plaintext in terraform.tfstate, which is local until there is a
+    remote backend.
   EOT
   type        = string
   sensitive   = true
