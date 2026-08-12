@@ -23,6 +23,8 @@ TEST_DSN = os.environ.get("MR_MOUSE_STATS_TEST_DSN", DEFAULT_TEST_DSN)
 _TABLES = (
     "settings_observations",
     "twitch_messages",
+    "bot_commands",
+    "bot_channel_status",
     "roster_entries",
     "social_accounts",
     "players",

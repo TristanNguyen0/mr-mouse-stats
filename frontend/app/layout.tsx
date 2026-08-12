@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,11 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <nav>
-          <Link href="/">Overview</Link>
-          <Link href="/players/">Players</Link>
-          <Link href="/admin/">Admin</Link>
-        </nav>
+        <SiteHeader />
         {children}
         <footer>
           Player and tournament data from{" "}

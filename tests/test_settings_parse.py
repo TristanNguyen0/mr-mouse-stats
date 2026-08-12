@@ -65,6 +65,37 @@ def test_no_settings_content_returns_none():
     assert parse_settings("!dpi") is None
 
 
+class TestDigitsInsideModelNames:
+    """A digit run only ends a model when it starts a token.
+
+    Both strings below are verbatim captures that were being mangled: the
+    model truncated to "G", and — worse — a model number landing in the DPI
+    column, since 400 is one of the canonical DPI steps.
+    """
+
+    def test_model_number_survives(self):
+        parsed = parse_settings("logitech G502 X wireless")  # veswa
+        assert parsed.mouse_brand == "Logitech"
+        assert parsed.mouse_model == "G502 X wireless"
+
+    def test_model_number_with_a_suffix_survives(self):
+        parsed = parse_settings("Logitech G640 x NAVI")  # terramr
+        assert parsed.mouse_model == "G640 x NAVI"
+
+    def test_a_model_number_is_not_a_dpi(self):
+        assert parse_settings("Logitech G400").dpi is None
+
+    def test_a_trailing_bare_number_is_still_a_dpi(self):
+        parsed = parse_settings("Logitech G Pro 800")
+        assert parsed.dpi == 800
+        assert parsed.mouse_model == "G Pro"
+
+    def test_a_settings_clause_still_ends_the_model(self):
+        parsed = parse_settings("Razer Viper V3 Pro, 1600 dpi")
+        assert parsed.mouse_model == "Viper V3 Pro"
+        assert parsed.dpi == 1600
+
+
 # Bare formats below are verbatim from real captures (twitch_messages).
 
 

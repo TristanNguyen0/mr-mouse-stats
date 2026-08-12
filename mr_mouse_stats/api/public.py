@@ -29,6 +29,7 @@ class Player(BaseModel):
     sensitivity: float | None
     edpi: float | None
     mouse: str | None
+    device: str | None
     observations: int
     last_observed_at: str | None
 
@@ -58,12 +59,26 @@ class RoleStat(BaseModel):
     median_edpi: float | None
 
 
+class Metric(BaseModel):
+    """Centre and spread of one setting, for the headline figures."""
+
+    count: int
+    median: float | None
+    mean: float | None
+    low: float | None
+    high: float | None
+
+
 class Stats(BaseModel):
     total_players: int
     covered_players: int
+    total_teams: int
+    total_observations: int
     dpi_distribution: list[Bucket]
     edpi_distribution: list[Bucket]
     mouse_popularity: list[Bucket]
+    edpi: Metric
+    dpi: Metric
     roles: list[RoleStat]
 
 
@@ -79,6 +94,7 @@ def _player(summary) -> Player:
         sensitivity=summary.sensitivity,
         edpi=summary.edpi,
         mouse=summary.mouse,
+        device=summary.device,
         observations=summary.observations,
         last_observed_at=summary.last_observed_at,
     )
@@ -118,6 +134,10 @@ def stats(conn: db.Connection = Depends(get_conn)) -> Stats:
     return Stats(
         total_players=len(summaries),
         covered_players=sum(1 for s in summaries if s.observations),
+        total_teams=len({s.team for s in summaries if s.team}),
+        total_observations=sum(s.observations for s in summaries),
+        edpi=Metric(**vars(queries.edpi_metric(summaries))),
+        dpi=Metric(**vars(queries.dpi_metric(summaries))),
         dpi_distribution=[
             Bucket(label=label, count=n) for label, n in queries.dpi_distribution(summaries)
         ],

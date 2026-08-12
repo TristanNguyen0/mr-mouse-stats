@@ -236,7 +236,7 @@ class Store:
         allowed = {
             "channel", "raw_text", "dpi", "sensitivity", "windows_sens",
             "mouse_brand", "mouse_model", "pad_brand", "pad_model", "ref_url",
-            "source_message_id", "polling_rate", "zoom_sens",
+            "source_message_id", "source_command_id", "polling_rate", "zoom_sens",
         }
         unknown = set(fields) - allowed
         if unknown:
@@ -322,6 +322,85 @@ class Store:
                 last_checked_at = excluded.last_checked_at
             """,
             (channel.lower(), confirmed, checked_at),
+        )
+
+    def record_bot_command(
+        self,
+        bot: str,
+        channel: str,
+        command_id: str,
+        name: str,
+        message: str,
+        updated_at: str | None,
+        first_fetched_at: str,
+        bot_channel_id: str | None = None,
+    ) -> int | None:
+        """Append a command definition. Returns None when this exact version
+        was already recorded — an unedited command re-read on every run.
+
+        Editing the command moves the bot's updated_at, so the new text
+        appends rather than colliding: that is the whole change history.
+        """
+        row = self.conn.execute(
+            """
+            INSERT INTO bot_commands
+                (bot, channel, bot_channel_id, command_id, name, message,
+                 updated_at, first_fetched_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            -- Untargeted: two constraints dedupe this table, one for bots
+            -- that timestamp their commands and one for bots that don't.
+            ON CONFLICT DO NOTHING
+            RETURNING id
+            """,
+            (bot, channel.lower(), bot_channel_id, command_id, name, message,
+             updated_at, first_fetched_at),
+        ).fetchone()
+        return row["id"] if row is not None else None
+
+    def upsert_bot_channel_status(
+        self,
+        bot: str,
+        channel: str,
+        registered: bool,
+        bot_channel_id: str | None,
+        commands_seen: int,
+        checked_at: str,
+    ) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO bot_channel_status
+                (bot, channel, registered, bot_channel_id, commands_seen,
+                 last_checked_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (bot, channel) DO UPDATE SET
+                registered = excluded.registered,
+                bot_channel_id = excluded.bot_channel_id,
+                commands_seen = excluded.commands_seen,
+                last_checked_at = excluded.last_checked_at
+            """,
+            (bot, channel.lower(), registered, bot_channel_id, commands_seen,
+             checked_at),
+        )
+
+    def unparsed_bot_commands(self) -> list[Row]:
+        """Command versions with no derived settings observation yet."""
+        return self.conn.execute(
+            """
+            SELECT * FROM bot_commands bc
+            WHERE bc.dismissed_at IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM settings_observations so
+                  WHERE so.source_command_id = bc.id
+              )
+            ORDER BY bc.updated_at, bc.id
+            """
+        ).fetchall()
+
+    def dismiss_bot_command(self, command_id: int, dismissed_at: str) -> None:
+        self.conn.execute(
+            "UPDATE bot_commands SET dismissed_at = %s "
+            "WHERE id = %s AND dismissed_at IS NULL",
+            (dismissed_at, command_id),
         )
 
     def dismiss_twitch_message(self, message_id: int, dismissed_at: str) -> None:

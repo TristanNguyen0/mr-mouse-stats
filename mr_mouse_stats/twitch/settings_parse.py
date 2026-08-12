@@ -33,13 +33,19 @@ _SENS = re.compile(
 _BRAND = re.compile(
     r"\b(" + "|".join(re.escape(b) for b in MOUSE_BRANDS) + r")\b", re.I
 )
-_MODEL_STOP = re.compile(r"[,;|]|\bdpi\b|\bsens\b|\bwin\b|\d{3,5}\b", re.I)
+# A digit run ends the model only when it starts a token: "Razer Viper 1600
+# dpi" is a model then a setting, but the digits in "G502" and "G640" are
+# part of the name, and an unanchored \d{3,5} truncates those to "G".
+_MODEL_STOP = re.compile(
+    r"[,;|]|\bdpi\b|\bsens\b|\bwin\b|(?<![A-Za-z0-9])\d{3,5}\b", re.I
+)
 # prose words that mark the end of a model name, and a length cap: model
 # names are short ("Starlight Pro TenZ", "G Pro X Superlight")
-_MODEL_PROSE_WORDS = frozenset({
+MODEL_PROSE_WORDS = frozenset({
     "right", "now", "currently", "atm", "and", "with", "but", "he", "she",
     "they", "i", "on", "at", "for", "since", "is", "was", "the",
 })
+_MODEL_PROSE_WORDS = MODEL_PROSE_WORDS
 _MODEL_MAX_WORDS = 4
 
 # Real bot responses are usually bare ("0.85 1600", "1600 0.52") with no
@@ -47,7 +53,10 @@ _MODEL_MAX_WORDS = 4
 # found nothing, and only on unambiguous single candidates: a lone integer
 # from the canonical DPI steps, and a lone dotted decimal in sens range.
 _BARE_DPI_VALUES = frozenset({400, 800, 1200, 1600, 2000, 2400, 3200, 6400})
-_BARE_INT = re.compile(r"(?<![\d.])(\d{3,4})(?![\d.])(?!\s*hz)", re.I)
+# Same anchoring as _MODEL_STOP, and for a worse reason: 400 is a canonical
+# DPI step, so an unanchored run reads "Logitech G400" as 400 DPI — a model
+# number landing in a numeric field.
+_BARE_INT = re.compile(r"(?<![A-Za-z0-9.])(\d{3,4})(?![\d.])(?!\s*hz)", re.I)
 _BARE_DECIMAL = re.compile(r"(?<![\d.])(\d{1,2}\.\d+)(?![\d.])")
 _SENS_MAX = 20.0
 
@@ -59,13 +68,21 @@ class ParsedSettings:
     windows_sens: int | None = None
     mouse_brand: str | None = None
     mouse_model: str | None = None
+    # Only the bot-command parser fills these in: a chat response rarely
+    # names a pad, but a dedicated !mousepad command is nothing but one.
+    pad_brand: str | None = None
+    pad_model: str | None = None
 
 
-def _canonical_brand(matched: str) -> str:
-    for brand in MOUSE_BRANDS:
+def canonical_brand(matched: str, brands: list[str] = MOUSE_BRANDS) -> str:
+    """Restore a brand's canonical casing from however it was written."""
+    for brand in brands:
         if brand.lower() == matched.lower():
             return brand
     return matched
+
+
+_canonical_brand = canonical_brand
 
 
 def parse_settings(text: str) -> ParsedSettings | None:

@@ -1,8 +1,10 @@
 "use client";
 
 import { Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ErrorNotice, Loading, useAsync } from "@/components/Async";
+import { Card, Stat, num } from "@/components/Card";
 import { api, type HistoryEntry, type Player } from "@/lib/api";
 
 // A query parameter rather than /players/[id]/: a static export would need
@@ -21,56 +23,75 @@ function PlayerDetail() {
 
   const p = player.data;
   return (
-    <main>
-      <h1>{p.display_name}</h1>
-      <p className="muted">
-        {[p.team, p.role, p.country].filter(Boolean).join(" · ") || "—"}
-        {" · "}
-        <a href={`https://liquipedia.net/marvelrivals/${p.liquipedia_page}`}>
-          Liquipedia
-        </a>
-      </p>
+    <>
+      <section className="hero">
+        <h1>{p.display_name}</h1>
+        <p className="muted">
+          {[p.team, p.role, p.country].filter(Boolean).join(" · ") || "no roster data"}
+          {" · "}
+          <a href={`https://liquipedia.net/marvelrivals/${p.liquipedia_page}`}>
+            Liquipedia
+          </a>
+          {p.last_observed_at && ` · last seen ${p.last_observed_at.slice(0, 10)}`}
+        </p>
+        <div className="stat-grid">
+          <Stat value={num(p.dpi)} label="DPI" />
+          <Stat value={num(p.sensitivity)} label="Sensitivity" />
+          <Stat accent value={num(p.edpi)} label="eDPI" />
+          <Stat value={p.observations} label="Readings" />
+        </div>
+      </section>
 
-      <h2>Current</h2>
-      <div className="tablewrap">
-        <table>
-          <tbody>
-            <tr>
-              <th>DPI</th>
-              <td>{p.dpi ?? "—"}</td>
-            </tr>
-            <tr>
-              <th>Sensitivity</th>
-              <td>{p.sensitivity ?? "—"}</td>
-            </tr>
-            <tr>
-              <th>eDPI</th>
-              <td>{p.edpi ?? "—"}</td>
-            </tr>
-            <tr>
-              <th>Mouse</th>
-              <td>{p.mouse ?? "—"}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div className="cards wide">
+        <Card title="Mouse" note={p.device ? "canonical name" : undefined}>
+          {p.device || p.mouse ? (
+            <>
+              <p style={{ fontSize: "1.15rem", fontWeight: 600, margin: "0 0 0.4rem" }}>
+                {p.device ?? p.mouse}
+              </p>
+              {p.mouse && p.mouse !== p.device && (
+                <p className="muted">said as “{p.mouse}”</p>
+              )}
+              {p.device && (
+                <p style={{ marginBottom: 0 }}>
+                  <Link href={`/players/?device=${encodeURIComponent(p.device)}`}>
+                    Others using this mouse →
+                  </Link>
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="empty">no mouse observed yet</p>
+          )}
+        </Card>
+
+        <Card title="Where this came from" note={`${history.data.length} stints`}>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Readings are never overwritten. Consecutive identical ones are
+            collapsed below, so a change back to earlier settings stays visible.
+          </p>
+          <div className="metric-row" style={{ border: 0, paddingBottom: 0 }}>
+            {[...new Set(history.data.map((h) => h.source))].map((source) => (
+              <span key={source} className="source">
+                {source}
+              </span>
+            ))}
+          </div>
+        </Card>
       </div>
 
       <h2>History</h2>
-      <p className="muted">
-        Consecutive identical readings are collapsed, so a change back to earlier
-        settings stays visible.
-      </p>
       <div className="tablewrap">
         <table>
           <thead>
             <tr>
               <th>First seen</th>
               <th>Last seen</th>
-              <th>Seen</th>
+              <th className="num">Seen</th>
               <th>Source</th>
-              <th>DPI</th>
-              <th>Sens</th>
-              <th>Win</th>
+              <th className="num">DPI</th>
+              <th className="num">Sens</th>
+              <th className="num">Win</th>
               <th>Mouse</th>
               <th>Raw</th>
             </tr>
@@ -80,29 +101,34 @@ function PlayerDetail() {
               <tr key={`${h.first_seen_at}-${i}`}>
                 <td>{h.first_seen_at.slice(0, 10)}</td>
                 <td>{h.last_seen_at.slice(0, 10)}</td>
-                <td>{h.times_seen}</td>
+                <td className="num">{h.times_seen}</td>
                 <td>
                   <span className="source">{h.source}</span>
                 </td>
-                <td>{h.dpi ?? "—"}</td>
-                <td>{h.sensitivity ?? "—"}</td>
-                <td>{h.windows_sens ?? "—"}</td>
+                <td className="num">{num(h.dpi)}</td>
+                <td className="num">{num(h.sensitivity)}</td>
+                <td className="num">{num(h.windows_sens)}</td>
                 <td>{h.mouse ?? "—"}</td>
-                <td className="raw muted">{h.raw_text ?? "—"}</td>
+                <td className="raw">{h.raw_text ?? "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        {history.data.length === 0 && (
+          <p className="empty">Nothing observed for this player yet.</p>
+        )}
       </div>
-    </main>
+    </>
   );
 }
 
 export default function PlayerPage() {
   // useSearchParams needs a Suspense boundary during prerender.
   return (
-    <Suspense fallback={<Loading />}>
-      <PlayerDetail />
-    </Suspense>
+    <main>
+      <Suspense fallback={<Loading />}>
+        <PlayerDetail />
+      </Suspense>
+    </main>
   );
 }

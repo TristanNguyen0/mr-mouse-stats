@@ -82,6 +82,12 @@ def test_stats(client):
     assert body["covered_players"] == 1
     assert body["dpi_distribution"] == [{"label": "1600", "count": 1}]
     assert body["mouse_popularity"] == [{"label": "Razer Viper V3", "count": 1}]
+    assert body["total_teams"] == 1
+    assert body["total_observations"] == 2
+    assert body["edpi"] == {
+        "count": 1, "median": 1360.0, "mean": 1360.0, "low": 1360.0, "high": 1360.0
+    }
+    assert body["dpi"]["median"] == 1600.0
     roles = {r["role"]: r for r in body["roles"]}
     assert roles["Duelist"]["median_edpi"] == pytest.approx(1360.0)
     assert roles["Vanguard"]["median_edpi"] is None
