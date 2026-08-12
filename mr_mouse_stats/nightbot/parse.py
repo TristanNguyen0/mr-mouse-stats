@@ -44,9 +44,12 @@ COMMAND_HINTS: dict[str, str] = {
     "sensi": "sens",
     "mouse": "mouse",
     "mice": "mouse",
+    # Only the one that says "mouse". A bare !settings is graphics settings
+    # in practice — across the Ignite roster every single one answered with
+    # things like "all low, textures medium & nvidia dlss ultra performance"
+    # or a link to a settings clip, never a sensitivity. Collecting those
+    # buys nothing and risks reading a stray number out of a clip URL.
     "mousesettings": "sens",
-    "settings": "sens",
-    "setting": "sens",
     "mousepad": "pad",
     "pad": "pad",
     "mousemat": "pad",

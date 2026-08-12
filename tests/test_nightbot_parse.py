@@ -20,7 +20,7 @@ def test_normalize_name(raw, expected):
 # must NOT be collected matter more than the ones that must: !monitor and
 # !headset both answer with a brand the mouse parser recognizes.
 @pytest.mark.parametrize(
-    "name", ["!sens", "!mouse", "!mousepad", "!dpi", "!settings"]
+    "name", ["!sens", "!mouse", "!mousepad", "!dpi", "!mousesettings"]
 )
 def test_settings_commands_are_recognized(name):
     assert command_hint(name) is not None
@@ -29,7 +29,9 @@ def test_settings_commands_are_recognized(name):
 @pytest.mark.parametrize(
     "name",
     ["!monitor", "!headset", "!keyboard", "!specs", "!res", "!rank", "!team",
-     "!youtube", "!age", "!gear", "!setup", "nt"],
+     "!youtube", "!age", "!gear", "!setup", "nt",
+     # Graphics settings, on every channel that defines it.
+     "!settings"],
 )
 def test_unrelated_commands_are_not_collected(name):
     assert command_hint(name) is None
