@@ -38,6 +38,14 @@ resource "aws_cloudfront_origin_access_control" "site" {
   signing_protocol                  = "sigv4"
 }
 
+resource "aws_cloudfront_function" "site_rewrite" {
+  name    = "${local.name}-site-rewrite"
+  runtime = "cloudfront-js-2.0"
+  comment = "Map directory URLs to index.html for the static export"
+  publish = true
+  code    = file("${path.module}/site-rewrite.js")
+}
+
 resource "aws_cloudfront_distribution" "site" {
   enabled             = true
   default_root_object = "index.html"
@@ -60,10 +68,25 @@ resource "aws_cloudfront_distribution" "site" {
 
     # Managed-CachingOptimized
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+
+    # Without this, nothing maps /players/ to /players/index.html: the REST
+    # origin has no directory index and default_root_object only covers "/".
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.site_rewrite.arn
+    }
   }
 
-  # next.config.mjs sets trailingSlash, so /players/ maps to
-  # /players/index.html. Anything genuinely missing gets the 404 page.
+  # A missing key on a REST origin comes back 403 AccessDenied, not 404,
+  # because the bucket policy grants no s3:ListBucket. Both are mapped so that
+  # anything genuinely missing gets the 404 page instead of raw S3 XML.
+  custom_error_response {
+    error_code            = 403
+    response_code         = 404
+    response_page_path    = "/404.html"
+    error_caching_min_ttl = 300
+  }
+
   custom_error_response {
     error_code            = 404
     response_code         = 404
