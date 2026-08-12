@@ -20,6 +20,7 @@ ENV_NIGHTBOT_CACHE_DIR = "MR_MOUSE_STATS_NIGHTBOT_CACHE_DIR"
 ENV_WIKI = "MR_MOUSE_STATS_WIKI"
 ENV_CORS_ORIGINS = "MR_MOUSE_STATS_CORS_ORIGINS"
 ENV_SCRAPE_INTERVAL = "MR_MOUSE_STATS_SCRAPE_INTERVAL"
+ENV_PARSE_INTERVAL = "MR_MOUSE_STATS_PARSE_INTERVAL"
 ENV_TOURNAMENTS = "MR_MOUSE_STATS_TOURNAMENTS"
 ENV_ADMIN_BASE_PATH = "MR_MOUSE_STATS_ADMIN_BASE_PATH"
 
@@ -135,6 +136,18 @@ def scrape_interval() -> float:
     """
     raw = os.environ.get(ENV_SCRAPE_INTERVAL, "").strip()
     return float(raw) if raw else 24 * 3600.0
+
+
+def parse_interval() -> float:
+    """Seconds between settings-derivation passes in the long-running task.
+
+    Five minutes: the pass is one indexed query over messages that have no
+    observation yet, so it costs nothing when chat has been quiet, and a
+    reading should reach the site in minutes rather than whenever someone
+    next runs the CLI by hand.
+    """
+    raw = os.environ.get(ENV_PARSE_INTERVAL, "").strip()
+    return float(raw) if raw else 300.0
 
 
 def tournaments() -> list[str]:

@@ -1,14 +1,21 @@
 """Long-running service entrypoint for the Fargate task.
 
-Two independent concerns share one container:
+Three independent concerns share one container:
 
 - the Twitch collector, on the main thread, permanently connected;
-- the Liquipedia scrape, on a timer, on its own thread.
+- the Liquipedia scrape, on a timer, on its own thread;
+- the settings derivation, on a shorter timer, on its own thread.
 
 The scrape MUST NOT run on the collector's thread. `_read_lines` is a
 blocking recv with a 5s timeout and the HTTP rate gate sleeps ~2s per
 request, so an inline scrape would stop the socket being read for ~10s and
-delay the PONG reply, risking a server-side disconnect.
+delay the PONG reply, risking a server-side disconnect. The derivation is
+quicker but gets its own thread for the same reason.
+
+Without the derivation thread the deployment collects raw messages forever
+and never turns them into readings: `parse-observations` is a CLI command,
+and nothing hosted was running it. The site then serves whatever the last
+manual run produced, growing staler the longer collection succeeds.
 
 The rate gate stays correct by construction here: one process, one
 long-lived LiquipediaClient, one monotonic clock. That is the whole reason
@@ -27,6 +34,7 @@ from .liquipedia import api
 from .liquipedia.player import parse_player
 from .liquipedia.settings_tables import parse_mouse_settings
 from .liquipedia.tournament import parse_tournament
+from .twitch.derive import derive_observations
 from .twitch.irc import ReadOnlyIrcClient
 from .twitch.runner import collect
 
@@ -153,8 +161,50 @@ class Scraper:
         return added
 
 
+class Deriver:
+    """Timer-driven `parse-observations`, sharing the CLI's implementation.
+
+    Its own database connection, like Scraper's, because psycopg connections
+    are not thread-safe and the collector is using its own continuously.
+
+    Incremental only. A re-parse deletes and rebuilds, which is the right
+    call to make deliberately after a parser change — `parse-observations
+    --reparse` — and the wrong thing to have a timer do unattended.
+    """
+
+    def __init__(self, stop: threading.Event) -> None:
+        self._stop = stop
+        self._interval = config.parse_interval()
+
+    def run_forever(self) -> None:
+        # Wait one interval first: the collector has only just connected and
+        # anything already captured has been sitting there since the last run.
+        while not self._stop.wait(self._interval):
+            try:
+                self.run_once()
+            except Exception as exc:  # a failed parse must not kill the task
+                logger.exception(
+                    "scheduled parse failed; will retry next interval",
+                    extra={"fields": {"error": str(exc)}},
+                )
+
+    def run_once(self) -> dict[str, int]:
+        conn = db.connect(config.db())
+        try:
+            store = db.Store(conn)
+            counts = derive_observations(store)
+            store.commit()
+        finally:
+            conn.close()
+        # Quiet chat is the normal case; only say something when there was
+        # something to say, so the log stays readable.
+        if counts["parsed"] or counts["unknown_channel"]:
+            logger.info("scheduled parse complete", extra={"fields": counts})
+        return counts
+
+
 def run_service() -> int:
-    """Collector on the main thread, scrape on a timer thread."""
+    """Collector on the main thread, scrape and parse on timer threads."""
     log.setup()
     stop = threading.Event()
 
@@ -179,10 +229,17 @@ def run_service() -> int:
     )
     scrape_thread.start()
 
+    deriver = Deriver(stop)
+    parse_thread = threading.Thread(
+        target=deriver.run_forever, name="parse-observations", daemon=True
+    )
+    parse_thread.start()
+
     logger.info(
         "service starting",
         extra={"fields": {"channels": len(channels),
                           "scrape_interval": scraper._interval,
+                          "parse_interval": deriver._interval,
                           "tournaments": len(scraper._tournaments)}},
     )
     client = ReadOnlyIrcClient(channels)

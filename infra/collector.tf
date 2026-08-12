@@ -120,6 +120,7 @@ resource "aws_ecs_task_definition" "collector" {
       { name = "TZ", value = "UTC" },
       { name = "MR_MOUSE_STATS_TOURNAMENTS", value = join(",", var.tournaments) },
       { name = "MR_MOUSE_STATS_SCRAPE_INTERVAL", value = tostring(var.scrape_interval_seconds) },
+      { name = "MR_MOUSE_STATS_PARSE_INTERVAL", value = tostring(var.parse_interval_seconds) },
       # /tmp is writable and survives for the life of the task, which is
       # what the 24h HTTP cache TTL needs.
       { name = "MR_MOUSE_STATS_CACHE_DIR", value = "/tmp/liquipedia-cache" },

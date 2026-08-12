@@ -1,6 +1,8 @@
 """Collection loop + parse pass, end to end against an in-memory DB.
 No sockets, no network: the IRC client is replaced by a scripted fake."""
 
+import threading
+
 import pytest
 
 from mr_mouse_stats import cli, db
@@ -209,6 +211,26 @@ def test_parse_observations_dry_run(store, dsn, capsys):
     count = conn.execute("SELECT COUNT(*) c FROM settings_observations").fetchone()["c"]
     assert count == 0
     conn.close()
+
+
+def test_service_deriver_turns_captures_into_observations(store, dsn, monkeypatch):
+    """The gap that let production collect for days without deriving anything:
+    the hosted task ran the collector and the scrape, and nothing else."""
+    from mr_mouse_stats.service import Deriver
+
+    monkeypatch.setenv("MR_MOUSE_STATS_DB", dsn)
+    collect(FakeClient(SCRIPT), store)
+
+    counts = Deriver(threading.Event()).run_once()
+
+    assert counts["parsed"] == 2
+    rows = store.conn.execute(
+        "SELECT * FROM settings_observations ORDER BY id"
+    ).fetchall()
+    assert [r["source"] for r in rows] == ["twitch_chat", "twitch_chat"]
+
+    # Idempotent: the timer fires every few minutes over the same history.
+    assert Deriver(threading.Event()).run_once()["parsed"] == 0
 
 
 def clock_at(*values):

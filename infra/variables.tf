@@ -62,6 +62,17 @@ variable "scrape_interval_seconds" {
   default     = 86400
 }
 
+variable "parse_interval_seconds" {
+  description = <<-EOT
+    Seconds between settings-derivation passes inside the Fargate task. Five
+    minutes: the pass only looks at messages with no observation yet, so it
+    costs nothing when chat has been quiet, and without it the task collects
+    raw messages that never become readings on the site.
+  EOT
+  type        = number
+  default     = 300
+}
+
 variable "site_domain" {
   description = "Optional custom domain for the frontend. Empty uses the CloudFront domain."
   type        = string
