@@ -12,6 +12,9 @@ const nextConfig = {
 
   // Fail the build on type errors rather than shipping them.
   typescript: { ignoreBuildErrors: false },
+  
+  allowedDevOrigins: ['127.0.0.1'],
+
 };
 
 export default nextConfig;
