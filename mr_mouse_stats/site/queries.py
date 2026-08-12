@@ -8,9 +8,10 @@ both sort correctly as strings, so "latest" is a plain string max.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from statistics import median
+from statistics import mean, median
 
 from .. import db
+from .devices import canonical_mouse
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,7 @@ class PlayerSummary:
     sensitivity: float | None
     edpi: float | None  # dpi * sens from the latest observation carrying BOTH
     mouse: str | None  # "Brand Model" from the latest observation with a brand
+    device: str | None  # `mouse` folded onto a canonical name; None if not a mouse
     observations: int
     last_observed_at: str | None
 
@@ -113,6 +115,7 @@ def player_summaries(conn: db.Connection) -> list[PlayerSummary]:
                 sensitivity=sensitivity,
                 edpi=edpi,
                 mouse=mouse,
+                device=canonical_mouse(mouse),
                 observations=len(history),
                 last_observed_at=history[-1]["observed_at"] if history else None,
             )
@@ -186,11 +189,47 @@ def edpi_distribution(
 
 
 def mouse_popularity(summaries: list[PlayerSummary]) -> list[tuple[str, int]]:
+    """Players per canonical mouse, most used first.
+
+    Counts `device`, not the raw name: see `devices.canonical_mouse` for why
+    the raw names cannot be counted directly.
+    """
     counts: dict[str, int] = {}
     for summary in summaries:
-        if summary.mouse is not None:
-            counts[summary.mouse] = counts.get(summary.mouse, 0) + 1
+        if summary.device is not None:
+            counts[summary.device] = counts.get(summary.device, 0) + 1
     return sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+
+
+@dataclass(frozen=True)
+class Metric:
+    """Centre and spread of one numeric setting across players."""
+
+    count: int
+    median: float | None
+    mean: float | None
+    low: float | None
+    high: float | None
+
+
+def _metric(values: list[float]) -> Metric:
+    if not values:
+        return Metric(0, None, None, None, None)
+    return Metric(
+        count=len(values),
+        median=round(median(values), 1),
+        mean=round(mean(values), 1),
+        low=min(values),
+        high=max(values),
+    )
+
+
+def edpi_metric(summaries: list[PlayerSummary]) -> Metric:
+    return _metric([s.edpi for s in summaries if s.edpi is not None])
+
+
+def dpi_metric(summaries: list[PlayerSummary]) -> Metric:
+    return _metric([float(s.dpi) for s in summaries if s.dpi is not None])
 
 
 def role_comparison(

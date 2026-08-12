@@ -103,6 +103,39 @@ def test_distributions(conn):
     assert queries.mouse_popularity(summaries) == [("Logitech G Pro X Superlight", 1)]
 
 
+def test_mouse_popularity_counts_devices_not_spellings(conn, store):
+    """Two players naming the same mouse differently are one device, two users."""
+    other = store.upsert_player_stub("Delta", "resolved", "t0")
+    conn.execute("UPDATE players SET player_id = 'Delta' WHERE id = %s", (other,))
+    store.add_settings_observation(
+        other, "2026-07-04T10:00:00+00:00", "twitch_chat", channel="delta",
+        raw_text="gpx superlight", mouse_model="gpx superlight",
+    )
+    store.commit()
+
+    summaries = queries.player_summaries(conn)
+    assert queries.mouse_popularity(summaries) == [("Logitech G Pro X Superlight", 2)]
+    # the player keeps the words they actually used
+    delta = next(s for s in summaries if s.display_name == "Delta")
+    assert (delta.mouse, delta.device) == (
+        "gpx superlight",
+        "Logitech G Pro X Superlight",
+    )
+
+
+def test_metrics(conn):
+    summaries = queries.player_summaries(conn)
+    edpi = queries.edpi_metric(summaries)
+    assert (edpi.count, edpi.median, edpi.mean) == (1, 1360.0, 1360.0)
+    dpi = queries.dpi_metric(summaries)
+    assert (dpi.count, dpi.median, dpi.low, dpi.high) == (2, 1200.0, 800.0, 1600.0)
+
+
+def test_metrics_of_nothing(conn):
+    empty = queries.edpi_metric([])
+    assert (empty.count, empty.median, empty.mean) == (0, None, None)
+
+
 def test_role_comparison(conn):
     rows = queries.role_comparison(queries.player_summaries(conn))
     assert ("Duelist", 1, 1360.0) in rows

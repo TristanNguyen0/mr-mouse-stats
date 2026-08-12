@@ -174,6 +174,14 @@ a data source; at most they serve as a manual validation set.
 Settings history is append-only: `social_accounts` and `settings_observations`
 rows are inserted with `observed_at` and never updated in place.
 
+Mouse names are stored exactly as the player said them ("gpx superlight",
+"Logitech G PRO X Superlight", …). Counting those verbatim would make the
+usage ranking one row per spelling, so `mr_mouse_stats/site/devices.py` folds
+them onto canonical names for the rollups only — a presentation step over the
+raw rows, which are never rewritten. A name it doesn't recognise is kept as
+its own entry rather than guessed at, and known non-mice (a `!mouse` answer
+that lists the mousepad too) are dropped from the mouse ranking.
+
 ## Attribution
 
 Tournament and player data are sourced from
