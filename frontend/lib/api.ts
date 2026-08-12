@@ -16,7 +16,10 @@ export interface Player {
   dpi: number | null;
   sensitivity: number | null;
   edpi: number | null;
+  /** What the player actually said, verbatim. */
   mouse: string | null;
+  /** `mouse` folded onto a canonical device name; null when it isn't a mouse. */
+  device: string | null;
   observations: number;
   last_observed_at: string | null;
 }
@@ -44,12 +47,24 @@ export interface RoleStat {
   median_edpi: number | null;
 }
 
+export interface Metric {
+  count: number;
+  median: number | null;
+  mean: number | null;
+  low: number | null;
+  high: number | null;
+}
+
 export interface Stats {
   total_players: number;
   covered_players: number;
+  total_teams: number;
+  total_observations: number;
   dpi_distribution: Bucket[];
   edpi_distribution: Bucket[];
   mouse_popularity: Bucket[];
+  edpi: Metric;
+  dpi: Metric;
   roles: RoleStat[];
 }
 
@@ -84,6 +99,21 @@ export const api = {
   history: (id: number) => request<HistoryEntry[]>(PUBLIC_API, `/players/${id}/history`),
   stats: () => request<Stats>(PUBLIC_API, "/stats"),
 };
+
+// The header search and the players table both want the whole roster, and it
+// is a few dozen rows. Cache the promise for the life of the tab so moving
+// between pages does not refetch it; drop it on failure so a retry can work.
+let rosterPromise: Promise<Player[]> | null = null;
+
+export function roster(): Promise<Player[]> {
+  if (!rosterPromise) {
+    rosterPromise = api.players().catch((err) => {
+      rosterPromise = null;
+      throw err;
+    });
+  }
+  return rosterPromise;
+}
 
 // --- admin -----------------------------------------------------------------
 // Every call carries the Cognito access token. API Gateway rejects requests
