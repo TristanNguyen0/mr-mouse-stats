@@ -150,6 +150,15 @@ resource "aws_iam_role_policy" "github_deploy" {
         Action   = ["cloudfront:CreateInvalidation", "cloudfront:GetInvalidation"]
         Resource = aws_cloudfront_distribution.site.arn
       },
+      # The direct DSN, for the migrate step. Scoped to that one secret: the
+      # pooled DSN next to it is the runtimes' credential and the deploy role
+      # has no reason to hold it.
+      {
+        Sid      = "ReadDirectDsn"
+        Effect   = "Allow"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = aws_secretsmanager_secret.database_direct.arn
+      },
       # Read-only on the state bucket. The workflow runs `terraform output` to
       # resolve names; it never applies, so it needs no write and no lock.
       {

@@ -85,7 +85,8 @@ jobs:
           for key in ecr_api_repository ecr_collector_repository \
                      api_base_url admin_api_base_url \
                      cognito_domain cognito_client_id cognito_region \
-                     site_bucket site_url cloudfront_distribution_id; do
+                     site_bucket site_url cloudfront_distribution_id \
+                     database_direct_secret_arn; do
             value="$(jq -er ".${key}.value" "$RUNNER_TEMP/tf.json")"
             echo "${key}=${value}" >> "$GITHUB_OUTPUT"
           done
@@ -131,6 +132,35 @@ jobs:
             ${{ steps.tf.outputs.ecr_collector_repository }}:${{ github.sha }}
           cache-from: type=gha,scope=collector
           cache-to: type=gha,mode=max,scope=collector
+
+      # Before any new code runs, and after both images exist so a build
+      # failure cannot leave the schema ahead of what is deployed.
+      #
+      # Migrations run from the collector image just built, so the SQL that
+      # is applied is the SQL in the commit being deployed — a separate
+      # Python setup here could resolve different package data. The image has
+      # no boto3 (deliberately: it keeps the collector slim), so the DSN is
+      # resolved here and passed in rather than read from inside.
+      #
+      # apply_migrations skips what is already recorded, so this is a no-op on
+      # a normal deploy and on a rollback to an older ref. It does not roll
+      # back — a migration that has to be undone is a hand operation against
+      # the direct endpoint, as this one used to be.
+      - name: Apply database migrations
+        env:
+          IMAGE: ${{ steps.tf.outputs.ecr_collector_repository }}@${{ steps.collector.outputs.digest }}
+          SECRET_ARN: ${{ steps.tf.outputs.database_direct_secret_arn }}
+        run: |
+          MR_MOUSE_STATS_DB="$(aws secretsmanager get-secret-value \
+            --secret-id "$SECRET_ARN" --query SecretString --output text)"
+          # Masked before it can reach a log line: `docker run` echoes nothing,
+          # but a failure inside psycopg can put the DSN in a traceback.
+          echo "::add-mask::$MR_MOUSE_STATS_DB"
+          export MR_MOUSE_STATS_DB
+          # `-e NAME`, not `-e NAME=value`: the latter puts the DSN in docker's
+          # argv, where `ps` can read it for as long as the step runs. The
+          # pass-through form takes it from this shell's environment instead.
+          docker run --rm -e MR_MOUSE_STATS_DB "$IMAGE" migrate
 
       # By digest, not by tag: ECR tags are mutable, so `:latest` names
       # whatever was pushed most recently. A digest names this build forever,

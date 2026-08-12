@@ -109,9 +109,16 @@ Create a project, then take **two** connection strings:
 
 Both need `?sslmode=require`.
 
-Only the pooled one goes to AWS, via `secrets.auto.tfvars` in §3.1. The
-direct one is a hand-operated migration credential: keep it in your own
-environment or password manager and never put it in Terraform.
+Both go to AWS, via `secrets.auto.tfvars` in §3.1, into **separate** secrets
+with separate readers: the runtimes get the pooled one, and only the deploy
+role can read the direct one, only to run `migrate`.
+
+The direct one used to be a hand-operated credential that never left a
+developer's `.env`. That made `migrate` a step someone had to remember, and
+in August 2026 nobody did — production ran five days on a schema two
+migrations behind its own code, with no signal anywhere, until a bug report
+about a truncated mouse name led back to it. Keep it in your `.env` as well;
+§3.5 and any hand-run backfill still want it.
 
 **Quote it.** A Neon DSN contains `&` (`?sslmode=require&channel_binding=require`).
 Unquoted in a `.env`, the shell splits the line at the `&`, backgrounds the
@@ -236,6 +243,11 @@ step, never something a request triggers. Use the **direct** DSN:
 MR_MOUSE_STATS_DB="$NEON_DIRECT_DSN" uv run mr-mouse-stats migrate
 ```
 
+This is the first-apply bootstrap, before any deploy has run. From then on
+the deploy workflow applies migrations itself (§3.7), from the collector
+image it just built and before it rolls anything onto new code. Running it
+by hand stays supported and is a no-op when there is nothing pending.
+
 Confirm it landed *on Neon*, not on localhost:
 
 ```sh
@@ -321,9 +333,15 @@ something.
 ### 3.7 Wire up GitHub Actions
 
 Once for the repository, after the full apply. There are no secrets to set —
-OIDC means no long-lived AWS key ever enters GitHub, and both Neon DSNs stay
-out of it entirely (the pooled one is in Secrets Manager, the direct one in
-your local `.env`).
+OIDC means no long-lived AWS key ever enters GitHub, and neither Neon DSN is
+stored there: both live in Secrets Manager, and the workflow resolves the
+direct one at run time through the role it assumed.
+
+The workflow's order is deliberate. It builds both images, applies
+migrations, and only then rolls the Lambdas and restarts the collector — so
+new code never meets an old schema. Migrations are additive by convention
+for the same reason: between the migrate step and the roll, the *old* code
+is briefly running against the *new* schema.
 
 ```sh
 terraform -chdir=infra output -raw github_deploy_role_arn
@@ -349,10 +367,12 @@ without changing `github_oidc.tf` breaks every deploy.
 | Variable | Default | Notes |
 |---|---|---|
 | `neon_dsn` | — | Required. Pooled endpoint. Stored in Secrets Manager; set it in `secrets.auto.tfvars`, not `-var=` (shell history, `ps`) and not `TF_VAR_` (only set in the exporting shell). |
+| `neon_direct_dsn` | — | Required. Direct endpoint (no `-pooler`). Its own secret, readable only by the deploy role, only for `migrate`. Same handling rules as `neon_dsn`. |
 | `region` | `us-east-1` | Cost figures in `MIGRATION.md` are us-east-1 list prices. |
 | `admin_emails` | — | Required, no default. Seeded Cognito users; see §3.1. |
 | `tournaments` | Mid Season Finals | Pages the scheduled scrape refreshes. |
 | `scrape_interval_seconds` | `86400` | Daily. See §6 before lowering it. |
+| `parse_interval_seconds` | `300` | How often the task derives observations from captured messages. |
 | `site_domain` / `acm_certificate_arn` | `""` | Custom domain; certificate must be in us-east-1. |
 | `collector_cpu` / `collector_memory` | `256` / `512` | 0.25 vCPU is already generous. |
 | `github_repository` | `TristanNguyen0/mr-mouse-stats` | `owner/name`, baked into the deploy role's OIDC trust condition. |

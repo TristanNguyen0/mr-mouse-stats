@@ -46,6 +46,35 @@ variable "neon_dsn" {
   }
 }
 
+variable "neon_direct_dsn" {
+  description = <<-EOT
+    Postgres DSN for Neon's DIRECT endpoint (no -pooler in the host). Only
+    the deploy workflow's `migrate` step reads it, and DDL is why it is the
+    direct one: Neon's pooler is PgBouncer in transaction mode, which is the
+    wrong place to run schema changes.
+
+    This used to live only in a developer's .env, with `migrate` run by hand.
+    That is how production ended up serving a schema two migrations behind
+    its own code for five days with nothing reporting it — a deploy that
+    cannot migrate is a deploy that silently drifts. Same handling rules as
+    neon_dsn above: secrets.auto.tfvars, never -var=.
+  EOT
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = can(regex("^postgres(ql)?://", var.neon_direct_dsn))
+    error_message = "neon_direct_dsn must be a postgres:// or postgresql:// URL. Set it in secrets.auto.tfvars."
+  }
+
+  # The whole point is that it is not the pooled endpoint; getting this
+  # wrong would work until a migration did something PgBouncer dislikes.
+  validation {
+    condition     = !can(regex("-pooler", var.neon_direct_dsn))
+    error_message = "neon_direct_dsn is the pooled endpoint (-pooler in the host). Use Neon's direct endpoint."
+  }
+}
+
 variable "tournaments" {
   description = "Liquipedia tournament pages the scheduled scrape refreshes."
   type        = list(string)

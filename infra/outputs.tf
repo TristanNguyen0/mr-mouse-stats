@@ -46,6 +46,13 @@ output "ecr_collector_repository" {
   value = aws_ecr_repository.collector.repository_url
 }
 
+# The ARN, not the DSN: an output is plaintext in `terraform output -json`,
+# and the workflow already has an identity that can resolve the ARN.
+output "database_direct_secret_arn" {
+  description = "Secret holding Neon's direct DSN, read by the deploy workflow's migrate step."
+  value       = aws_secretsmanager_secret.database_direct.arn
+}
+
 output "github_deploy_role_arn" {
   description = "Set this as the AWS_DEPLOY_ROLE_ARN repository variable in GitHub."
   value       = aws_iam_role.github_deploy.arn

@@ -58,6 +58,20 @@ resource "aws_secretsmanager_secret_version" "database" {
   secret_string = var.neon_dsn
 }
 
+# Separate secret, separate reader: only the deploy role can read this one,
+# and only to run `migrate`. Neither the Lambdas nor the collector are given
+# access — they connect through the pooler, and a runtime that can reach the
+# direct endpoint would quietly exhaust Neon's connection limit.
+resource "aws_secretsmanager_secret" "database_direct" {
+  name                    = "${local.name}/database-direct-dsn"
+  recovery_window_in_days = 7
+}
+
+resource "aws_secretsmanager_secret_version" "database_direct" {
+  secret_id     = aws_secretsmanager_secret.database_direct.id
+  secret_string = var.neon_direct_dsn
+}
+
 resource "aws_ecr_repository" "api" {
   name                 = "${local.name}-api"
   image_tag_mutability = "MUTABLE"
