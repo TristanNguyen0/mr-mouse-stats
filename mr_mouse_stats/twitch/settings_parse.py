@@ -33,7 +33,12 @@ _SENS = re.compile(
 _BRAND = re.compile(
     r"\b(" + "|".join(re.escape(b) for b in MOUSE_BRANDS) + r")\b", re.I
 )
-_MODEL_STOP = re.compile(r"[,;|]|\bdpi\b|\bsens\b|\bwin\b|\d{3,5}\b", re.I)
+# A digit run ends the model only when it starts a token: "Razer Viper 1600
+# dpi" is a model then a setting, but the digits in "G502" and "G640" are
+# part of the name, and an unanchored \d{3,5} truncates those to "G".
+_MODEL_STOP = re.compile(
+    r"[,;|]|\bdpi\b|\bsens\b|\bwin\b|(?<![A-Za-z0-9])\d{3,5}\b", re.I
+)
 # prose words that mark the end of a model name, and a length cap: model
 # names are short ("Starlight Pro TenZ", "G Pro X Superlight")
 MODEL_PROSE_WORDS = frozenset({
@@ -48,7 +53,10 @@ _MODEL_MAX_WORDS = 4
 # found nothing, and only on unambiguous single candidates: a lone integer
 # from the canonical DPI steps, and a lone dotted decimal in sens range.
 _BARE_DPI_VALUES = frozenset({400, 800, 1200, 1600, 2000, 2400, 3200, 6400})
-_BARE_INT = re.compile(r"(?<![\d.])(\d{3,4})(?![\d.])(?!\s*hz)", re.I)
+# Same anchoring as _MODEL_STOP, and for a worse reason: 400 is a canonical
+# DPI step, so an unanchored run reads "Logitech G400" as 400 DPI — a model
+# number landing in a numeric field.
+_BARE_INT = re.compile(r"(?<![A-Za-z0-9.])(\d{3,4})(?![\d.])(?!\s*hz)", re.I)
 _BARE_DECIMAL = re.compile(r"(?<![\d.])(\d{1,2}\.\d+)(?![\d.])")
 _SENS_MAX = 20.0
 
