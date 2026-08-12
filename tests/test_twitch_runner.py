@@ -112,6 +112,95 @@ def test_parse_observations_end_to_end(store, dsn, capsys):
     conn2.close()
 
 
+def stale_row(store):
+    """The bot response's derived row, as an older parser would have left it.
+
+    Stands in for the real regression: a parser that stopped a model name at
+    the first digit run derived "Logitech G" from "logitech G502 X wireless",
+    and incremental parsing never looked at that message again.
+    """
+    return store.conn.execute(
+        "SELECT * FROM settings_observations WHERE raw_text LIKE '800 DPI%'"
+    ).fetchone()
+
+
+def test_reparse_rebuilds_rows_an_older_parser_got_wrong(store, dsn, capsys):
+    collect(FakeClient(SCRIPT), store)
+    assert cli.main(["parse-observations", "--db", dsn]) == 0
+    capsys.readouterr()
+
+    # Degrade the derived row the way a stale parser would have written it.
+    store.conn.execute(
+        "UPDATE settings_observations SET mouse_model = 'G', dpi = NULL "
+        "WHERE raw_text LIKE '800 DPI%'"
+    )
+    store.commit()
+
+    # A plain re-run cannot fix it: the message already has an observation.
+    assert cli.main(["parse-observations", "--db", dsn]) == 0
+    assert "0 observations parsed" in capsys.readouterr().out
+    assert stale_row(store)["mouse_model"] == "G"
+
+    assert cli.main(["parse-observations", "--db", dsn, "--reparse"]) == 0
+    out = capsys.readouterr().out
+    assert "2 derived rows replaced" in out
+    assert "2 observations parsed" in out
+
+    fixed = stale_row(store)
+    assert fixed["mouse_model"] == "Starlight Pro"
+    assert fixed["dpi"] == 800
+    # Rebuilt, not appended alongside the stale row.
+    count = store.conn.execute(
+        "SELECT COUNT(*) c FROM settings_observations"
+    ).fetchone()["c"]
+    assert count == 2
+
+
+def test_reparse_leaves_manual_observations_alone(store, dsn, capsys):
+    collect(FakeClient(SCRIPT), store)
+    message = store.conn.execute(
+        "SELECT * FROM twitch_messages WHERE kind = 'bot_response'"
+    ).fetchone()
+    player_id = store.player_ids_by_twitch_channel()["shpeediry"]
+    store.add_settings_observation(
+        player_id, message["observed_at"], "manual",
+        channel=message["channel"], raw_text=message["text"],
+        dpi=400, source_message_id=message["id"],
+    )
+    store.commit()
+
+    assert cli.main(["parse-observations", "--db", dsn, "--reparse"]) == 0
+    capsys.readouterr()
+
+    rows = store.conn.execute(
+        "SELECT * FROM settings_observations ORDER BY id"
+    ).fetchall()
+    # The hand-recorded row survives, and the message it covers was not
+    # parsed over — only the broadcaster's separate response was derived.
+    assert [r["source"] for r in rows] == ["manual", "twitch_chat"]
+    assert rows[0]["dpi"] == 400
+    assert rows[1]["dpi"] == 1600
+
+
+def test_reparse_dry_run_deletes_nothing(store, dsn, capsys):
+    collect(FakeClient(SCRIPT), store)
+    assert cli.main(["parse-observations", "--db", dsn]) == 0
+    capsys.readouterr()
+    before = [dict(r) for r in store.conn.execute(
+        "SELECT * FROM settings_observations ORDER BY id"
+    ).fetchall()]
+
+    assert cli.main(["parse-observations", "--db", dsn, "--reparse", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "2 derived rows replaced" in out  # what it would replace
+    assert "dry run, nothing written" in out
+
+    after = [dict(r) for r in store.conn.execute(
+        "SELECT * FROM settings_observations ORDER BY id"
+    ).fetchall()]
+    assert after == before
+
+
 def test_parse_observations_dry_run(store, dsn, capsys):
     collect(FakeClient(SCRIPT), store)
     assert cli.main(["parse-observations", "--db", dsn, "--dry-run"]) == 0

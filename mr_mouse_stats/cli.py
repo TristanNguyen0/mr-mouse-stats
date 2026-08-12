@@ -436,61 +436,17 @@ def cmd_parse_bot_commands(args: argparse.Namespace) -> int:
 
 
 def cmd_parse_observations(args: argparse.Namespace) -> int:
-    from .twitch.settings_parse import parse_settings
+    from .twitch.derive import derive_observations, format_counts
 
     conn = db.connect(args.db)
     store = db.Store(conn)
-    channel_players = store.player_ids_by_twitch_channel()
-    counts = {"parsed": 0, "unparseable": 0, "unknown_channel": 0}
-    for row in store.unparsed_response_messages():
-        parsed = parse_settings(row["text"])
-        if parsed is None:
-            counts["unparseable"] += 1
-            continue
-        player_id = channel_players.get(row["channel"])
-        if player_id is None:
-            counts["unknown_channel"] += 1
-            logger.warning(
-                "response in channel with no known player",
-                extra={"fields": {"channel": row["channel"]}},
-            )
-            continue
-        counts["parsed"] += 1
-        logger.info(
-            "settings observation",
-            extra={
-                "fields": {
-                    "channel": row["channel"],
-                    "dpi": parsed.dpi,
-                    "sensitivity": parsed.sensitivity,
-                    "mouse": parsed.mouse_brand,
-                    "dry_run": args.dry_run,
-                }
-            },
-        )
-        if not args.dry_run:
-            store.add_settings_observation(
-                player_id,
-                row["observed_at"],
-                "twitch_chat",
-                channel=row["channel"],
-                raw_text=row["text"],
-                dpi=parsed.dpi,
-                sensitivity=parsed.sensitivity,
-                windows_sens=parsed.windows_sens,
-                mouse_brand=parsed.mouse_brand,
-                mouse_model=parsed.mouse_model,
-                source_message_id=row["id"],
-            )
+    counts = derive_observations(
+        store, reparse=args.reparse, dry_run=args.dry_run
+    )
     if not args.dry_run:
         store.commit()
     conn.close()
-    print(
-        f"{counts['parsed']} observations parsed, "
-        f"{counts['unparseable']} candidates unparseable (kept for re-parse), "
-        f"{counts['unknown_channel']} in unknown channels"
-        + (" (dry run, nothing written)" if args.dry_run else "")
-    )
+    print(format_counts(counts, dry_run=args.dry_run))
     return 0
 
 
@@ -605,6 +561,10 @@ def main(argv: list[str] | None = None) -> int:
         help="derive settings_observations from stored raw twitch messages",
     )
     _add_db_arg(parse)
+    parse.add_argument("--reparse", action="store_true",
+                       help="rebuild every derived observation from the raw "
+                            "text, not just messages never parsed before; use "
+                            "after a parser fix (manual rows are left alone)")
     parse.add_argument("--dry-run", action="store_true",
                        help="show what would be parsed without writing")
     parse.set_defaults(func=cmd_parse_observations)

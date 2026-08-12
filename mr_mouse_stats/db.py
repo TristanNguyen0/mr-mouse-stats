@@ -295,6 +295,53 @@ class Store:
             """
         ).fetchall()
 
+    def reparsable_response_messages(self) -> list[Row]:
+        """Every candidate response a re-parse should rebuild from raw text.
+
+        Unlike `unparsed_response_messages` this ignores derived rows — the
+        caller deletes those first — but it still skips a message an admin
+        has recorded by hand, so a re-parse never lands a machine reading
+        next to the human one that was meant to replace it.
+        """
+        return self.conn.execute(
+            """
+            SELECT * FROM twitch_messages tm
+            WHERE tm.kind IN ('bot_response', 'broadcaster_response')
+              AND tm.dismissed_at IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM settings_observations so
+                  WHERE so.source_message_id = tm.id
+                    AND so.source <> 'twitch_chat'
+              )
+            ORDER BY tm.observed_at
+            """
+        ).fetchall()
+
+    # Derived rows only: `source_message_id` is what makes a row reproducible
+    # from a raw capture. Anything else under this source came from somewhere
+    # a re-parse cannot rebuild, so it is not ours to delete.
+    _DERIVED_TWITCH = (
+        "FROM settings_observations "
+        "WHERE source = 'twitch_chat' AND source_message_id IS NOT NULL"
+    )
+
+    def derived_twitch_observation_count(self) -> int:
+        """How many rows a re-parse would replace. For dry runs."""
+        return self.conn.execute(
+            f"SELECT COUNT(*) c {self._DERIVED_TWITCH}"
+        ).fetchone()["c"]
+
+    def delete_derived_twitch_observations(self) -> int:
+        """Drop derived twitch rows so they can be rebuilt. Returns the count.
+
+        The only deletion in a schema that is otherwise append-only, and it
+        stays honest about that: these rows are a pure function of
+        `twitch_messages.text` and the parser, both of which outlive them.
+        """
+        return self.conn.execute(
+            f"DELETE {self._DERIVED_TWITCH}"
+        ).rowcount
+
     def player_ids_by_twitch_channel(self) -> dict[str, int]:
         """Map lowercase twitch handle -> players.id."""
         rows = self.conn.execute(
