@@ -141,6 +141,26 @@ The order matters in one place: the Lambdas reference `:latest` in ECR, and
 Terraform cannot create a function whose image does not exist. So create the
 registries first, push, then apply everything.
 
+### 3.0 State bucket
+
+State lives in S3 so CI can read the outputs — `scripts/deploy.sh` and the
+deploy workflow both resolve every AWS identifier through `terraform output`,
+and a runner cannot read a state file on your laptop. The bucket is created out
+of band, because Terraform cannot hold the state that describes its own state
+bucket:
+
+```sh
+./scripts/bootstrap-tfstate.sh     # idempotent; versioned, encrypted, private
+```
+
+Already have local state from before? Migrate it from the machine that holds
+it, and confirm the plan comes back empty:
+
+```sh
+terraform -chdir=infra init -migrate-state
+terraform -chdir=infra plan        # MUST report no changes
+```
+
 ### 3.1 Registries only
 
 ```sh
@@ -298,6 +318,28 @@ them from terraform outputs so they cannot drift:
 Changing any of them means rebuilding and re-syncing, not just restarting
 something.
 
+### 3.7 Wire up GitHub Actions
+
+Once for the repository, after the full apply. There are no secrets to set —
+OIDC means no long-lived AWS key ever enters GitHub, and both Neon DSNs stay
+out of it entirely (the pooled one is in Secrets Manager, the direct one in
+your local `.env`).
+
+```sh
+terraform -chdir=infra output -raw github_deploy_role_arn
+```
+
+1. **Settings → Environments → New environment → `production`.** Add yourself
+   under *Required reviewers*, and limit deployment branches to `main`.
+2. **Settings → Secrets and variables → Actions → Variables → New variable:**
+   `AWS_DEPLOY_ROLE_ARN`, set to the ARN above. A variable rather than a
+   secret — an ARN is not sensitive, and keeping it readable makes a failed
+   `AssumeRoleWithWebIdentity` diagnosable from the logs.
+
+The environment name is load-bearing: it appears verbatim in the role's trust
+condition (`repo:<owner>/<repo>:environment:production`). Renaming it here
+without changing `github_oidc.tf` breaks every deploy.
+
 ---
 
 ## 4. Configuration reference
@@ -313,6 +355,8 @@ something.
 | `scrape_interval_seconds` | `86400` | Daily. See §6 before lowering it. |
 | `site_domain` / `acm_certificate_arn` | `""` | Custom domain; certificate must be in us-east-1. |
 | `collector_cpu` / `collector_memory` | `256` / `512` | 0.25 vCPU is already generous. |
+| `github_repository` | `TristanNguyen0/mr-mouse-stats` | `owner/name`, baked into the deploy role's OIDC trust condition. |
+| `tfstate_bucket` | `mr-mouse-stats-tfstate` | Granted read-only to the deploy role. Must match the `backend "s3"` block in `main.tf`, which cannot take variables. |
 
 ### Runtime environment
 
@@ -386,15 +430,40 @@ channels and candidates.
 
 ### Routine deploys
 
+Merge to `main`. The **Deploy** workflow
+([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) starts and
+waits on the `production` environment — approve it in the Actions tab and it
+runs. Images push, the Lambdas roll onto the new image, the ECS service gets
+`--force-new-deployment`, the frontend is rebuilt with the live API URLs, HTML
+is synced with `max-age=0` and hashed assets with `immutable`, then CloudFront
+is invalidated.
+
+The approval is not decoration. The deploy role's trust policy only accepts a
+token whose `sub` is `repo:…:environment:production`, and GitHub mints that
+only after a reviewer approves — so an unapproved run has no AWS credentials
+at all.
+
+Doc-only changes (`**.md`) don't trigger it.
+
+`scripts/deploy.sh` does the same thing from your laptop and remains supported.
+Use it when GitHub is down, or to iterate on the frontend alone:
+
 ```sh
 ./scripts/deploy.sh            # images + frontend
 ./scripts/deploy.sh images     # backend only
 ./scripts/deploy.sh frontend   # static site only
 ```
 
-Images push, Lambdas roll onto the new image, and the ECS service gets
-`--force-new-deployment`. HTML is synced with `max-age=0` and hashed assets
-with `immutable`, then CloudFront is invalidated.
+The one difference: `deploy.sh` points the Lambdas at `:latest`, while the
+workflow pins them to an immutable digest. Both work; only the second gives you
+the rollback below.
+
+### CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every PR and
+every push to `main`: `pytest` against a `postgres:16` service container, and
+`next build` + `tsc --noEmit` for the frontend. It needs no credentials and
+touches no AWS resources.
 
 ### Things not to change casually
 
@@ -427,9 +496,23 @@ failure mode that loses data permanently.
 
 ### Rollback
 
+- **Everything at once** — re-run the Deploy workflow (`Run workflow`) with
+  `ref` set to the last good commit SHA. It rebuilds and redeploys that commit
+  end to end, frontend included. This is the one to reach for.
 - **Frontend** — S3 versioning is on; restore the previous object versions and
   invalidate.
-- **Lambdas** — `aws lambda update-function-code` with a previous image digest.
+- **Lambdas** — every deploy tags its image with the commit SHA, and the ECR
+  lifecycle policy keeps 30, so roughly the last 30 deploys are addressable:
+
+  ```sh
+  REPO="$(terraform -chdir=infra output -raw ecr_api_repository)"
+  aws ecr describe-images --repository-name mr-mouse-stats-api \
+    --query 'sort_by(imageDetails,&imagePushedAt)[-10:].[imageTags,imagePushedAt]' --output table
+  for fn in public-api admin-api; do
+    aws lambda update-function-code --function-name "mr-mouse-stats-$fn" \
+      --image-uri "$REPO:<old-sha>"
+  done
+  ```
 - **Collector** — `aws ecs update-service --task-definition <previous-revision>`.
 - **Schema** — no down-migrations. Additive changes only; restore from a Neon
   branch if you need to go back.
@@ -463,6 +546,14 @@ its own.
 | `duplicate key value violates unique constraint "schema_migrations_pkey"` | The data dump includes `schema_migrations`, which §3.4 already populated. `--exclude-table=schema_migrations`. |
 | `ResourceNotFoundException` / `AccessDeniedException` at cold start | The Lambda cannot read the DSN secret. Check `MR_MOUSE_STATS_DB_SECRET_ARN` on the function and the `read-database-dsn` policy on its role. |
 | Lambda connects to `localhost:55432` | The deployed image predates the Secrets Manager fallback in `config.db()`, so it fell through to the dev default. Push the image, then apply. |
+| `Error acquiring the state lock ... open .terraform/terraform.tfstate: permission denied` | `infra/.terraform/` is owned by root, left behind by the `docker run ... hashicorp/terraform` option in §2. Terraform truncates the local state *before* it fails, so recover from `terraform.tfstate.backup` first, then `sudo chown -R "$USER:$USER" infra/.terraform`. Pick one Terraform — native or Docker — and stay on it. |
+| `Lineage mismatch` on `init`, after a migration failed partway | The state reached S3 but the local file survived with the old lineage. Check the S3 copy is complete (`aws s3 cp s3://<bucket>/infra/terraform.tfstate - \| jq '.resources \| length'`), then move the local file aside and run a plain `terraform init` — with nothing in the old backend there is nothing to migrate. |
+| Deploy workflow: `Not authorized to perform sts:AssumeRoleWithWebIdentity` | The token's `sub` doesn't match the trust condition. Check the job declares `environment: production` (not just an approval), and that `github_repository` matches the real `owner/name`. |
+| Deploy workflow: `Could not assume role ... credentials not found` | `AWS_DEPLOY_ROLE_ARN` is unset, or set as a *secret* instead of a *variable* — the workflow reads `vars.`, not `secrets.`. See §3.7. |
+| Deploy workflow fails at `terraform init` | Either `.terraform.lock.hcl` is missing the `linux_arm64` hash (`terraform providers lock -platform=linux_amd64 -platform=linux_arm64`, then commit), or the deploy role lacks read on the state bucket. |
+| A deploy succeeded, then the API reverted hours later | Someone ran `terraform apply` and the `lifecycle { ignore_changes = [image_uri] }` blocks in `api.tf` are gone. Without them an apply rewrites both functions back to `:latest`. |
+| ECR `denied: requested access to the resource is denied` in CI | The image is being pushed to a repository not in the deploy role's `EcrPush` resource list — check `github_oidc.tf` if a third repository was added. |
+| Site loads but calls `127.0.0.1:8000` | The CI build got uploaded instead of the deploy build. Only the deploy workflow sets the `NEXT_PUBLIC_*` vars; CI builds unwired on purpose and never syncs. |
 
 ---
 

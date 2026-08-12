@@ -1,10 +1,27 @@
 terraform {
-  required_version = ">= 1.9"
+  # >= 1.11 for `use_lockfile` below: S3-native state locking via conditional
+  # writes, which replaces the DynamoDB lock table the old S3 backend needed.
+  required_version = ">= 1.11"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+  }
+
+  # Remote state, so CI can read the outputs. `scripts/deploy.sh` and the
+  # deploy workflow both resolve every AWS identifier through
+  # `terraform output` — with state on one laptop, a runner cannot deploy.
+  #
+  # The bucket is created out of band (scripts/bootstrap-tfstate.sh), not
+  # managed here: Terraform cannot hold the state that describes its own
+  # state bucket without a chicken-and-egg on the very first apply.
+  backend "s3" {
+    bucket       = "mr-mouse-stats-tfstate"
+    key          = "infra/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
   }
 }
 
@@ -57,13 +74,15 @@ resource "aws_ecr_repository" "collector" {
   }
 }
 
-# Keep the last 10 images; untagged layers otherwise accumulate forever.
+# Keep the last 30 images; untagged layers otherwise accumulate forever.
+# 30 rather than 10 because the deploy workflow tags every image with its
+# commit SHA: this is exactly how far back a rollback can reach.
 resource "aws_ecr_lifecycle_policy" "api" {
   repository = aws_ecr_repository.api.name
   policy = jsonencode({
     rules = [{
       rulePriority = 1
-      selection    = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 10 }
+      selection    = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 30 }
       action       = { type = "expire" }
     }]
   })
@@ -74,7 +93,7 @@ resource "aws_ecr_lifecycle_policy" "collector" {
   policy = jsonencode({
     rules = [{
       rulePriority = 1
-      selection    = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 10 }
+      selection    = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 30 }
       action       = { type = "expire" }
     }]
   })

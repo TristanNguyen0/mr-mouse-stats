@@ -66,6 +66,23 @@ infrastructure in [`infra/`](infra/). [`CLOUD.md`](CLOUD.md) is the
 deployment runbook; [`MIGRATION.md`](MIGRATION.md) explains why the
 architecture is shaped the way it is.
 
+### CI/CD
+
+[`ci.yml`](.github/workflows/ci.yml) runs `pytest` (against a `postgres:16`
+service container) and the frontend build + typecheck on every PR and push.
+
+[`deploy.yml`](.github/workflows/deploy.yml) deploys on push to `main`, gated
+on approving the `production` environment. It authenticates to AWS with OIDC,
+so the repository holds no AWS credentials. Rolling back means re-running it
+with `ref` set to an earlier commit — see [`CLOUD.md`](CLOUD.md) §6.
+
+Schema migrations stay manual and deliberate; the direct Neon DSN is never
+given to CI or to AWS:
+
+```sh
+MR_MOUSE_STATS_DB="$NEON_DIRECT_DSN" uv run mr-mouse-stats migrate
+```
+
 ### Legacy paths, still present
 
 The Flask dashboard (`mr-mouse-stats admin`), the static site renderer

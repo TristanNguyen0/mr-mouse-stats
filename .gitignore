@@ -18,10 +18,12 @@ data/
 .cache/
 *.sqlite3
 
-# local-only assistant context, not for the public repo
+# local-only notes and assistant context, not for the public repo.
+# *.local.md is where account ids, ARNs and bucket names go — this repo is
+# public, so they must never reach a tracked file.
 .claude/
 CLAUDE.md
-CLAUDE.local.md
+*.local.md
 
 # frontend
 frontend/node_modules/
@@ -31,8 +33,10 @@ frontend/next-env.d.ts
 frontend/tsconfig.tsbuildinfo
 
 # terraform
+# .terraform.lock.hcl is deliberately NOT ignored: the deploy workflow runs
+# `terraform init` on every deploy, and without the lock file it resolves the
+# provider afresh each time — non-deterministic, and it defeats caching.
 infra/.terraform/
-infra/.terraform.lock.hcl
 infra/*.tfstate
 infra/*.tfstate.*
 infra/*.tfvars

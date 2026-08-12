@@ -24,6 +24,7 @@ ECS Fargate (ARM64, public subnet) ── collector + timed scrape ────�
 | `api.tf` | both Lambdas, HTTP API, JWT authorizer, routes |
 | `collector.tf` | ECS cluster, ARM64 task definition, service, alarm |
 | `frontend.tf` | S3 (private) + CloudFront with Origin Access Control |
+| `github_oidc.tf` | OIDC provider and the role the deploy workflow assumes |
 
 ## First deploy
 
@@ -31,6 +32,10 @@ Full runbook — prerequisites, Neon setup, data migration, verification — is 
 [`../CLOUD.md`](../CLOUD.md). The short version:
 
 ```sh
+# 0. The state bucket, created out of band — Terraform cannot hold the state
+#    that describes its own state bucket. Idempotent.
+./scripts/bootstrap-tfstate.sh
+
 cd infra
 terraform init
 
@@ -65,7 +70,17 @@ hold DML only, on purpose:
 MR_MOUSE_STATS_DB="$NEON_DIRECT_DSN" uv run mr-mouse-stats migrate
 ```
 
-Subsequent deploys are just `scripts/deploy.sh`.
+Subsequent deploys go through the **Deploy** workflow (push to `main`, then
+approve the `production` environment). `scripts/deploy.sh` still works and is
+the break-glass path. See [`../CLOUD.md`](../CLOUD.md) §6.
+
+One-time wiring for the workflow, after the first full apply:
+
+```sh
+terraform -chdir=infra output -raw github_deploy_role_arn
+# → set as the AWS_DEPLOY_ROLE_ARN *variable* (not secret) in GitHub, and
+#   create a `production` environment with yourself as a required reviewer.
+```
 
 ## Deliberate choices worth not undoing
 
@@ -87,6 +102,19 @@ gate. `twitch_messages` dedupes on the Twitch message uuid so it would not
 corrupt data, but it doubles outbound traffic for nothing. The deployment
 settings force stop-then-start rather than an overlapping rollout.
 
+**`ignore_changes = [image_uri]` on both Lambda functions.** The `:latest` in
+`api.tf` is only the bootstrap value for the first apply; deploys pin each
+function to an immutable digest so rollback has something to name. Remove the
+`lifecycle` block and every subsequent `terraform apply` silently rolls both
+functions back to whatever `:latest` currently points at — which will look
+like a deploy that mysteriously undid itself hours later.
+
+**The deploy role trusts an environment, not a branch.** The OIDC condition in
+`github_oidc.tf` matches `repo:<owner>/<repo>:environment:production`, and
+GitHub only issues a token with that `sub` after the environment's required
+reviewers approve. Loosening it to `ref:refs/heads/main` would let any push to
+main assume the role unattended, which is the whole thing the gate prevents.
+
 **Use Neon's pooled endpoint** (`-pooler` in the hostname) for the Lambdas.
 They scale horizontally and would otherwise exhaust the direct connection
 limit.
@@ -103,7 +131,8 @@ comes back.
 
 - **DNS.** Set `site_domain` and `acm_certificate_arn` (us-east-1) if you want
   a custom domain; otherwise the CloudFront domain is used.
-- **A remote state backend.** Add an S3 backend before more than one person
-  runs this.
 - **WAF on the public API.** The data is public and read-only; add rate
   limiting if it ever gets attention.
+- **An SNS target for the collector alarm.** `RunningTaskCount < 1` fires into
+  the void today. It is the alarm that matters — a crash-looping collector
+  looks exactly like a quiet chat from the outside.

@@ -72,6 +72,14 @@ resource "aws_lambda_function" "public" {
     variables = local.lambda_environment
   }
 
+  # `:latest` above is only the bootstrap value for the first apply. Deploys
+  # pin the function to an immutable digest (`repo@sha256:...`), so without
+  # this every subsequent apply would see drift and quietly roll both
+  # functions back to whatever :latest happens to point at.
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
+
   # The ARN alone is not enough: without a version, the first cold start
   # fails on ResourceNotFoundException.
   depends_on = [aws_secretsmanager_secret_version.database]
@@ -96,6 +104,12 @@ resource "aws_lambda_function" "admin" {
     variables = merge(local.lambda_environment, {
       MR_MOUSE_STATS_ADMIN_BASE_PATH = local.admin_base_path
     })
+  }
+
+  # See the public function: deploys pin an immutable digest, applies must
+  # not revert it.
+  lifecycle {
+    ignore_changes = [image_uri]
   }
 
   depends_on = [aws_secretsmanager_secret_version.database]

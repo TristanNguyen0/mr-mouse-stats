@@ -22,8 +22,9 @@ variable "neon_dsn" {
     terraform command — not -var=, which lands in shell history and in `ps`
     output, and not TF_VAR_neon_dsn, which is only set in the one shell that
     exported it. Note that `sensitive` only suppresses CLI output — the value
-    is still plaintext in terraform.tfstate, which is local until there is a
-    remote backend.
+    is still plaintext in terraform.tfstate, which now lives in S3. That is
+    why the state bucket is private, encrypted, and versioned, and why the
+    deploy role gets read-only access to it.
   EOT
   type        = string
   sensitive   = true
@@ -95,4 +96,32 @@ variable "collector_memory" {
   description = "Fargate memory (MiB)."
   type        = number
   default     = 512
+}
+
+variable "github_repository" {
+  description = <<-EOT
+    owner/name of the GitHub repository allowed to assume the deploy role.
+    Baked into the OIDC trust condition, so a typo here means the deploy
+    workflow cannot authenticate — and nothing else can either.
+  EOT
+  type        = string
+  default     = "TristanNguyen0/mr-mouse-stats"
+
+  validation {
+    condition     = can(regex("^[^/]+/[^/]+$", var.github_repository))
+    error_message = "github_repository must be in owner/name form."
+  }
+}
+
+variable "tfstate_bucket" {
+  description = <<-EOT
+    Bucket holding the remote state, granted read-only to the deploy role so
+    the workflow can run `terraform output`.
+
+    Must match the bucket in the `backend "s3"` block in main.tf. It cannot be
+    derived from it: backend blocks are evaluated before variables exist and
+    so cannot take expressions. Created by scripts/bootstrap-tfstate.sh.
+  EOT
+  type        = string
+  default     = "mr-mouse-stats-tfstate"
 }
