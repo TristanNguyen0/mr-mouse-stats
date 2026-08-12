@@ -113,6 +113,36 @@ variable "github_repository" {
   }
 }
 
+# GitHub now stamps the numeric account and repository IDs into the OIDC
+# subject claim alongside the names, so both are needed to match it. They are
+# the immutable half of the identity: names can be renamed and re-registered by
+# someone else, IDs cannot. Read them from the public API:
+#
+#   curl -s https://api.github.com/repos/<owner>/<name> | jq '.id, .owner.id'
+#
+# (repository id first, owner id second).
+variable "github_owner_id" {
+  description = "Numeric GitHub account ID of the repository owner."
+  type        = string
+  default     = "99143948"
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_owner_id))
+    error_message = "github_owner_id must be all digits."
+  }
+}
+
+variable "github_repository_id" {
+  description = "Numeric GitHub ID of the repository itself."
+  type        = string
+  default     = "1318869120"
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_repository_id))
+    error_message = "github_repository_id must be all digits."
+  }
+}
+
 variable "tfstate_bucket" {
   description = <<-EOT
     Bucket holding the remote state, granted read-only to the deploy role so

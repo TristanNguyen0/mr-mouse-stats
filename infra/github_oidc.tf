@@ -20,10 +20,40 @@ resource "aws_iam_openid_connect_provider" "github" {
   client_id_list = ["sts.amazonaws.com"]
 }
 
+# The subject claim GitHub actually presents, which is *not* the plain
+# `repo:OWNER/REPO:...` form most examples show. GitHub interpolates the
+# numeric account and repository IDs after each name:
+#
+#   repo:OWNER@<owner-id>/REPO@<repo-id>:environment:production
+#
+# IAM compares `sub` as an opaque string, so a policy written against the
+# name-only form matches nothing and every deploy fails with "Not authorized to
+# perform sts:AssumeRoleWithWebIdentity" — the role is found, the condition
+# just never evaluates true. Verify the live value from a failed attempt rather
+# than assuming this shape:
+#
+#   aws cloudtrail lookup-events --max-results 1 \
+#     --lookup-attributes AttributeKey=EventName,AttributeValue=AssumeRoleWithWebIdentity \
+#     --query 'Events[0].Username' --output text
+#
+# Matching the IDs is also what makes the condition rename-proof: if this
+# account or repository is ever renamed and someone else registers the old
+# name, their tokens carry different IDs and are refused.
+locals {
+  github_owner = split("/", var.github_repository)[0]
+  github_name  = split("/", var.github_repository)[1]
+
+  github_oidc_sub = join("", [
+    "repo:${local.github_owner}@${var.github_owner_id}",
+    "/${local.github_name}@${var.github_repository_id}",
+    ":environment:production",
+  ])
+}
+
 # The trust condition binds to the *environment*, not the branch.
 #
-# A job that declares `environment: production` gets a token whose `sub` is
-# `repo:OWNER/REPO:environment:production`, and GitHub only issues it after the
+# A job that declares `environment: production` gets a token whose `sub` ends
+# in `:environment:production`, and GitHub only issues it after the
 # environment's required reviewers have approved. So the approval gate is not
 # merely a UI convention: without it, no token that can assume this role is
 # ever minted. A `ref:refs/heads/main` condition would be weaker — every push
@@ -41,7 +71,7 @@ resource "aws_iam_role" "github_deploy" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repository}:environment:production"
+          "token.actions.githubusercontent.com:sub" = local.github_oidc_sub
         }
       }
     }]

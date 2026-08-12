@@ -110,10 +110,15 @@ functions back to whatever `:latest` currently points at — which will look
 like a deploy that mysteriously undid itself hours later.
 
 **The deploy role trusts an environment, not a branch.** The OIDC condition in
-`github_oidc.tf` matches `repo:<owner>/<repo>:environment:production`, and
-GitHub only issues a token with that `sub` after the environment's required
-reviewers approve. Loosening it to `ref:refs/heads/main` would let any push to
-main assume the role unattended, which is the whole thing the gate prevents.
+`github_oidc.tf` matches
+`repo:<owner>@<owner-id>/<repo>@<repo-id>:environment:production`, and GitHub
+only issues a token with that `sub` after the environment's required reviewers
+approve. Loosening it to `ref:refs/heads/main` would let any push to main
+assume the role unattended, which is the whole thing the gate prevents.
+
+Note the numeric IDs: GitHub stamps them into the subject claim, so the
+name-only `repo:<owner>/<repo>:...` form seen in most examples matches nothing.
+They come from `github_owner_id` and `github_repository_id`.
 
 **Use Neon's pooled endpoint** (`-pooler` in the hostname) for the Lambdas.
 They scale horizontally and would otherwise exhaust the direct connection
