@@ -22,7 +22,7 @@ def make_client(tmp_path, responses, clock=None, **kwargs):
     clock = clock or FakeClock()
     calls = []
 
-    def transport(url):
+    def transport(url, headers):
         calls.append(url)
         return json.dumps(responses[len(calls) - 1]).encode()
 

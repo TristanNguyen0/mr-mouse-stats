@@ -1,0 +1,206 @@
+{
+    "_total": 20,
+    "commands": [
+        {
+            "_id": "668b8256912ffbac16719094",
+            "createdAt": "2024-07-08T06:08:22.000Z",
+            "updatedAt": "2024-07-08T06:08:40.801Z",
+            "name": "nt",
+            "message": "noobtry PopNemo",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 30
+        },
+        {
+            "_id": "6641d50cecba39b329064b84",
+            "createdAt": "2024-05-13T08:53:32.000Z",
+            "updatedAt": "2024-05-13T08:53:32.126Z",
+            "name": "!youtube",
+            "message": "https://www.youtube.com/channel/UCLsnPNW_YXeFQdhAIsZjM_Q",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6641d51f94989d50fa67e41c",
+            "createdAt": "2024-05-13T08:53:51.000Z",
+            "updatedAt": "2024-05-13T08:53:51.321Z",
+            "name": "!twitter",
+            "message": "https://twitter.com/aplycs",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6641d58c94989d50fa67f329",
+            "createdAt": "2024-05-13T08:55:40.000Z",
+            "updatedAt": "2024-05-13T08:55:40.246Z",
+            "name": "!tiktok",
+            "message": "https://www.tiktok.com/@aplycs?lang=en",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6a55219d56875a27cd605ad5",
+            "createdAt": "2026-07-13T17:34:21.000Z",
+            "updatedAt": "2026-07-13T17:34:21.756Z",
+            "name": "!team",
+            "message": "aplycs is lft",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 30
+        },
+        {
+            "_id": "6a578e7d71e1e5122c292f8c",
+            "createdAt": "2026-07-15T13:43:25.000Z",
+            "updatedAt": "2026-07-15T13:43:25.029Z",
+            "name": "!specs",
+            "message": "Ryzen 7 7800X3D | RTX4070",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 30
+        },
+        {
+            "_id": "6641d673ecba39b329068136",
+            "createdAt": "2024-05-13T08:59:31.000Z",
+            "updatedAt": "2026-08-07T08:58:41.061Z",
+            "name": "!sens",
+            "message": "0.125 1600dpi",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6641d68194989d50fa68168d",
+            "createdAt": "2024-05-13T08:59:45.000Z",
+            "updatedAt": "2026-08-07T08:58:58.164Z",
+            "name": "!res",
+            "message": "1440x1080 / 1920x1080",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6a621d4871e1e5122c8d9a4c",
+            "createdAt": "2026-07-23T13:55:20.000Z",
+            "updatedAt": "2026-07-23T13:55:20.658Z",
+            "name": "!rank",
+            "message": "radiant",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 30
+        },
+        {
+            "_id": "669dfe23c58da2b41c9945ef",
+            "createdAt": "2024-07-22T06:37:23.000Z",
+            "updatedAt": "2026-07-21T15:11:22.676Z",
+            "name": "!mousepad",
+            "message": "MEIY PULSAR GLASSPAD",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 30
+        },
+        {
+            "_id": "6641d5a5ecba39b329066134",
+            "createdAt": "2024-05-13T08:56:05.000Z",
+            "updatedAt": "2026-08-07T08:58:23.761Z",
+            "name": "!mouse",
+            "message": "Viper V4 PRO",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6641d6ac94989d50fa681dde",
+            "createdAt": "2024-05-13T09:00:28.000Z",
+            "updatedAt": "2026-07-21T15:10:59.302Z",
+            "name": "!monitor",
+            "message": "ZOWIE XL2566X+ (400Hz)",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6a55203556875a27cd602a6a",
+            "createdAt": "2026-07-13T17:28:21.000Z",
+            "updatedAt": "2026-07-13T17:28:21.311Z",
+            "name": "!mcd",
+            "message": "spicy chicken mcdeluxe,mcflurry,XXL fries",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 30
+        },
+        {
+            "_id": "6641d5c0ecba39b3290665d5",
+            "createdAt": "2024-05-13T08:56:32.000Z",
+            "updatedAt": "2025-07-08T06:49:01.143Z",
+            "name": "!keyboard",
+            "message": "Wooting 80HE",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6641d54becba39b3290654fd",
+            "createdAt": "2024-05-13T08:54:35.000Z",
+            "updatedAt": "2024-05-13T08:54:35.780Z",
+            "name": "!instagram",
+            "message": "https://www.instagram.com/aplycss/",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6641d609ecba39b3290670d6",
+            "createdAt": "2024-05-13T08:57:45.000Z",
+            "updatedAt": "2026-01-14T06:16:01.595Z",
+            "name": "!iems",
+            "message": "SIMGOT EW300",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6641d646ecba39b329067a8d",
+            "createdAt": "2024-05-13T08:58:46.000Z",
+            "updatedAt": "2026-07-21T15:10:37.221Z",
+            "name": "!headset",
+            "message": "Razer Blackshark V3 Pro",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "664ee502ecba39b329bb77b7",
+            "createdAt": "2024-05-23T06:41:06.000Z",
+            "updatedAt": "2026-08-07T10:48:35.966Z",
+            "name": "!duo",
+            "message": "thedoctorr",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "66438fa194989d50fac131bc",
+            "createdAt": "2024-05-14T16:21:53.000Z",
+            "updatedAt": "2026-07-15T13:53:32.848Z",
+            "name": "!delay",
+            "message": "20s",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 5
+        },
+        {
+            "_id": "6a578ddb71e1e5122c292351",
+            "createdAt": "2026-07-15T13:40:43.000Z",
+            "updatedAt": "2026-07-15T13:40:43.746Z",
+            "name": "!age",
+            "message": "20",
+            "userLevel": "everyone",
+            "count": 0,
+            "coolDown": 30
+        }
+    ],
+    "status": 200
+}

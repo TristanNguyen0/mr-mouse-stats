@@ -16,6 +16,7 @@ import os
 ENV_DB = "MR_MOUSE_STATS_DB"
 ENV_DB_SECRET_ARN = "MR_MOUSE_STATS_DB_SECRET_ARN"
 ENV_CACHE_DIR = "MR_MOUSE_STATS_CACHE_DIR"
+ENV_NIGHTBOT_CACHE_DIR = "MR_MOUSE_STATS_NIGHTBOT_CACHE_DIR"
 ENV_WIKI = "MR_MOUSE_STATS_WIKI"
 ENV_CORS_ORIGINS = "MR_MOUSE_STATS_CORS_ORIGINS"
 ENV_SCRAPE_INTERVAL = "MR_MOUSE_STATS_SCRAPE_INTERVAL"
@@ -26,6 +27,10 @@ ENV_ADMIN_BASE_PATH = "MR_MOUSE_STATS_ADMIN_BASE_PATH"
 # expected to supply their own (Neon) DSN — see db().
 DEFAULT_DB = "postgresql://postgres:postgres@localhost:55432/mr_mouse_stats"
 DEFAULT_CACHE_DIR = ".cache/liquipedia"
+# Its own root rather than a subdirectory of the Liquipedia cache: the two
+# have unrelated lifetimes, and nesting one under a path named for the other
+# would misfile it.
+DEFAULT_NIGHTBOT_CACHE_DIR = ".cache/nightbot"
 DEFAULT_WIKI = "marvelrivals"
 
 # Mirrors `local.admin_base_path` in infra/api.tf, which sets the env var on
@@ -98,6 +103,10 @@ def reset_dsn_cache() -> None:
 
 def cache_dir() -> str:
     return os.environ.get(ENV_CACHE_DIR) or DEFAULT_CACHE_DIR
+
+
+def nightbot_cache_dir() -> str:
+    return os.environ.get(ENV_NIGHTBOT_CACHE_DIR) or DEFAULT_NIGHTBOT_CACHE_DIR
 
 
 def wiki() -> str:

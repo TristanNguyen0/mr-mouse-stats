@@ -22,6 +22,13 @@ uv run mr-mouse-stats collect-twitch --duration 3600 --dry-run
 # Derive structured settings from stored raw messages (re-runnable)
 uv run mr-mouse-stats parse-observations
 
+# Stage 3: players' Nightbot command pages (nightbot.tv/t/<channel>/commands).
+# Reads !dpi / !sens / !mouse / !mousepad definitions directly, with the
+# streamer's own last-edited timestamp — no waiting for someone to ask in chat.
+uv run mr-mouse-stats fetch-nightbot --dry-run
+uv run mr-mouse-stats fetch-nightbot
+uv run mr-mouse-stats parse-bot-commands
+
 # Settings history already published on Liquipedia player pages
 uv run mr-mouse-stats ingest-liquipedia-settings
 
@@ -37,13 +44,20 @@ uv run mr-mouse-stats build-site
 
 ```
 Liquipedia API ─┐
-                ├─► Postgres (Neon) ─┬─► public API  ─┐
-Twitch IRC ─────┘                    │   (read-only)  ├─► Next.js static site
-                                     │                │   (S3 + CloudFront)
+                │
+Twitch IRC ─────┼─► Postgres (Neon) ─┬─► public API  ─┐
+                │                    │   (read-only)  ├─► Next.js static site
+Nightbot API ───┘                    │                │   (S3 + CloudFront)
                                      └─► admin API ───┘
                                          (owns every write,
                                           Cognito JWT authorizer)
 ```
+
+Both HTTP sources go through `mr_mouse_stats/http.py`, the only module that
+touches the network. `CachedHttpClient` there enforces what they have in
+common — the project User-Agent, gzip, a monotonic-clock rate gate and an
+on-disk response cache — and `LiquipediaClient` / `NightbotClient` add only
+their own URLs and limits.
 
 The collector and the Liquipedia scrape share one always-on ECS Fargate task
 (`mr-mouse-stats serve`): the IRC client stays connected continuously while

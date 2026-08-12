@@ -36,10 +36,11 @@ _BRAND = re.compile(
 _MODEL_STOP = re.compile(r"[,;|]|\bdpi\b|\bsens\b|\bwin\b|\d{3,5}\b", re.I)
 # prose words that mark the end of a model name, and a length cap: model
 # names are short ("Starlight Pro TenZ", "G Pro X Superlight")
-_MODEL_PROSE_WORDS = frozenset({
+MODEL_PROSE_WORDS = frozenset({
     "right", "now", "currently", "atm", "and", "with", "but", "he", "she",
     "they", "i", "on", "at", "for", "since", "is", "was", "the",
 })
+_MODEL_PROSE_WORDS = MODEL_PROSE_WORDS
 _MODEL_MAX_WORDS = 4
 
 # Real bot responses are usually bare ("0.85 1600", "1600 0.52") with no
@@ -59,13 +60,21 @@ class ParsedSettings:
     windows_sens: int | None = None
     mouse_brand: str | None = None
     mouse_model: str | None = None
+    # Only the bot-command parser fills these in: a chat response rarely
+    # names a pad, but a dedicated !mousepad command is nothing but one.
+    pad_brand: str | None = None
+    pad_model: str | None = None
 
 
-def _canonical_brand(matched: str) -> str:
-    for brand in MOUSE_BRANDS:
+def canonical_brand(matched: str, brands: list[str] = MOUSE_BRANDS) -> str:
+    """Restore a brand's canonical casing from however it was written."""
+    for brand in brands:
         if brand.lower() == matched.lower():
             return brand
     return matched
+
+
+_canonical_brand = canonical_brand
 
 
 def parse_settings(text: str) -> ParsedSettings | None:

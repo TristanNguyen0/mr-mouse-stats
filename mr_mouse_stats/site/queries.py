@@ -45,11 +45,10 @@ class HistoryEntry:
 
 
 def _mouse(row: db.Row) -> str | None:
-    if row["mouse_brand"] is None:
-        return None
-    if row["mouse_model"]:
-        return f"{row['mouse_brand']} {row['mouse_model']}"
-    return row["mouse_brand"]
+    """Either half alone is still a usable name: a dedicated !mouse command
+    often answers with a bare model ("Viper V4 Pro") and no brand."""
+    parts = [row["mouse_brand"], row["mouse_model"]]
+    return " ".join(p for p in parts if p) or None
 
 
 def _primary_role(roles: str | None) -> str | None:
@@ -99,8 +98,8 @@ def player_summaries(conn: db.Connection) -> list[PlayerSummary]:
                 sensitivity = row["sensitivity"]
             if row["dpi"] is not None and row["sensitivity"] is not None:
                 edpi = round(row["dpi"] * row["sensitivity"], 1)
-            if row["mouse_brand"] is not None:
-                mouse = _mouse(row)
+            if (named := _mouse(row)) is not None:
+                mouse = named
         summaries.append(
             PlayerSummary(
                 db_id=player["id"],

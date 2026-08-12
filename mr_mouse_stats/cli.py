@@ -285,6 +285,156 @@ def cmd_collect_twitch(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_fetch_nightbot(args: argparse.Namespace) -> int:
+    from .http import NightbotClient
+    from .nightbot import api as nightbot_api
+
+    conn = db.connect(args.db)
+    store = db.Store(conn)
+    channel_players = store.player_ids_by_twitch_channel()
+    if args.channels:
+        channels = [c.strip().lower() for c in args.channels.split(",") if c.strip()]
+    else:
+        channels = sorted(channel_players)
+    if not channels:
+        logger.error("no twitch channels: run fetch-roster first or pass --channels")
+        return 1
+
+    client = NightbotClient(cache_dir=args.cache_dir, refresh=args.refresh_cache)
+    now = db.now_utc()
+    counts = {"channels": 0, "registered": 0, "commands": 0, "new": 0}
+    for result in nightbot_api.fetch_channels(client, channels):
+        counts["channels"] += 1
+        counts["registered"] += int(result.registered)
+        counts["commands"] += len(result.commands)
+        logger.info(
+            "nightbot channel",
+            extra={
+                "fields": {
+                    "channel": result.channel,
+                    "registered": result.registered,
+                    "commands": len(result.commands),
+                    "dry_run": args.dry_run,
+                }
+            },
+        )
+        if args.dry_run:
+            for command in result.commands:
+                logger.info(
+                    "nightbot command",
+                    extra={
+                        "fields": {
+                            "channel": result.channel,
+                            "name": command.name,
+                            "message": command.message,
+                            "updated_at": command.updated_at,
+                        }
+                    },
+                )
+            continue
+        for command in result.commands:
+            row_id = store.record_bot_command(
+                nightbot_api.BOT,
+                command.channel,
+                command.command_id,
+                command.name,
+                command.message,
+                command.updated_at,
+                now,
+                bot_channel_id=command.bot_channel_id,
+            )
+            if row_id is not None:
+                counts["new"] += 1
+        store.upsert_bot_channel_status(
+            nightbot_api.BOT,
+            result.channel,
+            result.registered,
+            result.bot_channel_id,
+            len(result.commands),
+            now,
+        )
+        # Commit per channel: the run is long and rate-gated, and an
+        # interrupt halfway through should keep what it already read.
+        store.commit()
+    conn.close()
+    print(
+        f"{counts['channels']} channels checked, {counts['registered']} with nightbot, "
+        f"{counts['commands']} settings commands seen, {counts['new']} new versions stored"
+        + (" (dry run, nothing written)" if args.dry_run else "")
+    )
+    return 0
+
+
+def cmd_parse_bot_commands(args: argparse.Namespace) -> int:
+    from .nightbot.api import BOT, PAGE_URL
+    from .nightbot.parse import parse_command
+
+    conn = db.connect(args.db)
+    store = db.Store(conn)
+    channel_players = store.player_ids_by_twitch_channel()
+    counts = {"parsed": 0, "unparseable": 0, "unknown_channel": 0}
+    for row in store.unparsed_bot_commands():
+        parsed = parse_command(row["name"], row["message"])
+        if parsed is None:
+            counts["unparseable"] += 1
+            continue
+        player_id = channel_players.get(row["channel"])
+        if player_id is None:
+            counts["unknown_channel"] += 1
+            logger.warning(
+                "bot command in channel with no known player",
+                extra={"fields": {"channel": row["channel"]}},
+            )
+            continue
+        counts["parsed"] += 1
+        logger.info(
+            "settings observation",
+            extra={
+                "fields": {
+                    "channel": row["channel"],
+                    "command": row["name"],
+                    "dpi": parsed.dpi,
+                    "sensitivity": parsed.sensitivity,
+                    "mouse": parsed.mouse_model or parsed.mouse_brand,
+                    "dry_run": args.dry_run,
+                }
+            },
+        )
+        if not args.dry_run:
+            store.add_settings_observation(
+                player_id,
+                # The bot's own last-edited time, not when we read it: this
+                # is when the player actually changed the setting.
+                row["updated_at"] or row["first_fetched_at"],
+                row["bot"],
+                channel=row["channel"],
+                raw_text=row["message"],
+                dpi=parsed.dpi,
+                sensitivity=parsed.sensitivity,
+                windows_sens=parsed.windows_sens,
+                mouse_brand=parsed.mouse_brand,
+                mouse_model=parsed.mouse_model,
+                pad_brand=parsed.pad_brand,
+                pad_model=parsed.pad_model,
+                ref_url=(
+                    PAGE_URL.format(channel=row["channel"])
+                    if row["bot"] == BOT
+                    else None
+                ),
+                source_command_id=row["id"],
+            )
+    if not args.dry_run:
+        store.commit()
+    conn.close()
+    print(
+        f"{counts['parsed']} observations parsed, "
+        f"{counts['unparseable']} commands unparseable (kept for re-parse), "
+        f"{counts['unknown_channel']} in unknown channels"
+        + (" (dry run, nothing written)" if args.dry_run else "")
+    )
+    return 0
+
+
 def cmd_parse_observations(args: argparse.Namespace) -> int:
     from .twitch.settings_parse import parse_settings
 
@@ -458,6 +608,35 @@ def main(argv: list[str] | None = None) -> int:
     parse.add_argument("--dry-run", action="store_true",
                        help="show what would be parsed without writing")
     parse.set_defaults(func=cmd_parse_observations)
+
+    nightbot = sub.add_parser(
+        "fetch-nightbot",
+        help="read players' Nightbot public command pages for settings commands",
+    )
+    _add_db_arg(nightbot)
+    nightbot.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=Path(config.nightbot_cache_dir()),
+        help=f"on-disk API response cache (env {config.ENV_NIGHTBOT_CACHE_DIR})",
+    )
+    nightbot.add_argument("--refresh-cache", action="store_true",
+                          help="ignore cached API responses (still rate-limited)")
+    nightbot.add_argument("--channels",
+                          help="comma-separated channel override (default: all "
+                               "twitch handles in the database)")
+    nightbot.add_argument("--dry-run", action="store_true",
+                          help="fetch and log commands but write nothing")
+    nightbot.set_defaults(func=cmd_fetch_nightbot)
+
+    parse_commands = sub.add_parser(
+        "parse-bot-commands",
+        help="derive settings_observations from stored raw bot commands",
+    )
+    _add_db_arg(parse_commands)
+    parse_commands.add_argument("--dry-run", action="store_true",
+                                help="show what would be parsed without writing")
+    parse_commands.set_defaults(func=cmd_parse_bot_commands)
 
     build = sub.add_parser(
         "build-site", help="render the public stats site as static HTML"
