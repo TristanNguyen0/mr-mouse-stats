@@ -85,10 +85,10 @@ export default function Admin() {
     return (
       <main>
         <h1>Admin</h1>
-        <p className="muted">
+        {/* <p className="muted">
           This view owns every write to the database. Sign in with your Cognito
           account.
-        </p>
+        </p> */}
         <button className="primary" onClick={() => void login()}>
           Sign in
         </button>

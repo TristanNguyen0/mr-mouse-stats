@@ -30,12 +30,6 @@ export default function Overview() {
   return (
     <main>
       <section className="hero">
-        <h1>Marvel Rivals pro mouse settings</h1>
-        <p className="lead">
-          DPI, sensitivity, eDPI and mice for the Ignite circuit — read
-          passively out of public Twitch chat and Liquipedia, never asked for.
-          Every reading is kept, so settings history stays visible.
-        </p>
         <div className="stat-grid">
           <Stat
             accent

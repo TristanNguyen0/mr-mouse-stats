@@ -79,10 +79,7 @@ function PlayersTable() {
   return (
     <>
       <h1>Players</h1>
-      <p className="lead">
-        {covered} of {data.length} players in the circuit have at least one reading.
-        Those with none are listed too — the gap is part of the picture.
-      </p>
+
 
       <div className="toolbar">
         <div className="search">
